@@ -238,3 +238,43 @@ pnpm dev
 ```
 
 `.env.local` 파일은 `supabase start` 출력값에서 URL·anon key를 복사해 설정한다.
+
+---
+
+## 원격 DB 접속 (프로덕션 Supabase)
+
+**프로젝트 ref**: `ahvsuhyciuveftuuydho`
+**프로덕션 URL**: `https://ahvsuhyciuveftuuydho.supabase.co`
+
+### Supabase CLI로 원격 쿼리
+
+```bash
+# 프로젝트 연결 (최초 1회)
+supabase link --project-ref ahvsuhyciuveftuuydho
+
+# 원격 DB에 SQL 실행
+supabase db query "SELECT * FROM public.users;" --linked
+
+# 원격으로 마이그레이션 적용
+supabase db push
+```
+
+### 원격 DB 직접 조회 (node 스크립트)
+
+`.env.local`에 아래 값을 추가해두면 스크립트에서 사용 가능:
+
+```bash
+# 프로덕션 연결용 (로컬 개발 시에는 로컬 Supabase URL 사용)
+SUPABASE_PROD_URL=https://ahvsuhyciuveftuuydho.supabase.co
+SUPABASE_PROD_SERVICE_ROLE_KEY=<Supabase 대시보드 → Settings → API → Secret key>
+```
+
+```javascript
+// 원격 DB 조회 예시
+const { createClient } = require('@supabase/supabase-js')
+const client = createClient(process.env.SUPABASE_PROD_URL, process.env.SUPABASE_PROD_SERVICE_ROLE_KEY)
+const { data } = await client.from('users').select('*')
+```
+
+> `SERVICE_ROLE_KEY`는 Supabase 대시보드 **Settings → API → Secret key** 에서 확인.
+> `.env.local`에만 저장하고 절대 커밋하지 않는다 (`.gitignore`에 포함되어 있음).
