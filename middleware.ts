@@ -56,9 +56,10 @@ export async function middleware(request: NextRequest) {
 
   const isPublicPath = PUBLIC_PATHS.some((p) => pathname.startsWith(p))
 
-  // 미인증 사용자가 보호된 경로에 접근 → /login으로 리다이렉트
+  // 미인증 사용자가 보호된 경로에 접근 → /login으로 리다이렉트 (원래 경로 보존)
   if (!user && !isPublicPath) {
     const loginUrl = new URL('/login', request.url)
+    loginUrl.searchParams.set('redirect', pathname)
     return NextResponse.redirect(loginUrl)
   }
 

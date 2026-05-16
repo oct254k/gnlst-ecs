@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { createAdminClient } from '@/app/_lib/supabase/server'
 import type { Database } from '@/app/_lib/supabase/types'
 
@@ -12,8 +13,11 @@ type UsersUpdate = Database['public']['Tables']['users']['Update']
  * POST /api/auth/invite/accept
  * body: { token_hash: string, type: string, password: string }
  *
- * - type === 'invite': 초대 수락 + 비밀번호 설정 + users.status = 'active'
+ * - type === 'invite': 초대 수락 + 비밀번호 설정 + users.status = 'active' + 세션 쿠키 설정
  * - type === 'recovery': 비밀번호 재설정 (users.status는 변경하지 않음)
+ *
+ * 세션 쿠키: anon key로 생성한 SSR 클라이언트가 verifyOtp 결과를 쿠키에 자동 저장.
+ * users 테이블 업데이트는 RLS를 우회하기 위해 admin 클라이언트를 별도로 사용.
  */
 export async function POST(request: NextRequest) {
   const body = await request.json() as {
@@ -31,9 +35,27 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const supabase = await createAdminClient()
+  // SSR 클라이언트 (anon key): verifyOtp + updateUser → 세션 쿠키 설정
+  let supabaseResponse = NextResponse.next()
 
-  // OTP 검증으로 사용자 확인
+  const supabase = createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            supabaseResponse.cookies.set(name, value, options)
+          })
+        },
+      },
+    }
+  )
+
+  // OTP 검증으로 사용자 확인 + 세션 생성
   const { data: verifyData, error: verifyErr } = await supabase.auth.verifyOtp({
     token_hash,
     type: type as 'invite' | 'recovery',
@@ -48,10 +70,8 @@ export async function POST(request: NextRequest) {
 
   const userId = verifyData.user.id
 
-  // 비밀번호 설정
-  const { error: updateAuthErr } = await supabase.auth.admin.updateUserById(userId, {
-    password,
-  })
+  // 비밀번호 설정 (세션 보유 SSR 클라이언트 사용)
+  const { error: updateAuthErr } = await supabase.auth.updateUser({ password })
 
   if (updateAuthErr) {
     return NextResponse.json(
@@ -60,10 +80,11 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // 초대 수락인 경우에만 users.status를 active로 전환
+  // 초대 수락인 경우에만 users.status를 active로 전환 (RLS 우회를 위해 admin 클라이언트 사용)
   if (type === 'invite') {
+    const adminClient = await createAdminClient()
     const activatePayload = { status: 'active' } satisfies UsersUpdate
-    await supabase.from('users').update(activatePayload as never).eq('id', userId).is('deleted_at', null)
+    await adminClient.from('users').update(activatePayload as never).eq('id', userId).is('deleted_at', null)
   }
 
   const message =
@@ -71,8 +92,14 @@ export async function POST(request: NextRequest) {
       ? '계정이 활성화되었습니다.'
       : '비밀번호가 변경되었습니다. 다시 로그인해 주세요.'
 
-  return NextResponse.json(
+  // 세션 쿠키를 JSON 응답에 복사
+  const successResponse = NextResponse.json(
     { data: { message } },
     { status: 200 }
   )
+  supabaseResponse.cookies.getAll().forEach(({ name, value, ...rest }) => {
+    successResponse.cookies.set(name, value, rest)
+  })
+
+  return successResponse
 }

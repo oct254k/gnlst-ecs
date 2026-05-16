@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createUserClient, createAdminClient } from '@/app/_lib/supabase/server'
+import { createUserClient, createServiceRoleClient } from '@/app/_lib/supabase/server'
 import type { TablesUpdate } from '@/app/_lib/supabase/types'
 
 export async function PATCH(
@@ -32,7 +32,7 @@ export async function PATCH(
     )
   }
 
-  const adminClient = await createAdminClient()
+  const adminClient = createServiceRoleClient()
 
   const updatePayload = { role } satisfies TablesUpdate<'users'>
 

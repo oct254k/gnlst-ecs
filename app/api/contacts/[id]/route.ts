@@ -78,8 +78,9 @@ export async function PATCH(
 
 // DELETE /api/contacts/:id
 // 연락처 soft delete (admin only)
+// ?force=true 파라미터가 있으면 활성 멘션이 있어도 삭제 진행
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const supabase = await createUserClient()
@@ -98,19 +99,23 @@ export async function DELETE(
   }
 
   const { id } = await params
+  const { searchParams } = new URL(request.url)
+  const force = searchParams.get('force') === 'true'
 
-  // 활성 일정에 멘션 참조 여부 확인
-  const { count: mentionCount } = await supabase
-    .from('mentions')
-    .select('id', { count: 'exact', head: true })
-    .eq('reference_type', 'contact')
-    .eq('reference_id', id)
+  // 활성 일정에 멘션 참조 여부 확인 (force=true면 건너뜀)
+  if (!force) {
+    const { count: mentionCount } = await supabase
+      .from('mentions')
+      .select('id', { count: 'exact', head: true })
+      .eq('reference_type', 'contact')
+      .eq('reference_id', id)
 
-  if (mentionCount && mentionCount > 0) {
-    return NextResponse.json(
-      { data: null, error: { code: 'HAS_ACTIVE_MENTIONS', message: '활성 일정에 멘션 참조가 있습니다' } },
-      { status: 409 }
-    )
+    if (mentionCount && mentionCount > 0) {
+      return NextResponse.json(
+        { data: null, error: { code: 'HAS_ACTIVE_MENTIONS', message: '활성 일정에 멘션 참조가 있습니다' } },
+        { status: 409 }
+      )
+    }
   }
 
   const now = new Date().toISOString()

@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
   if (user.status === 'inactive') {
     return NextResponse.json(
       { data: null, error: { code: 'ACCOUNT_INACTIVE', message: '비활성화된 계정입니다. 관리자에게 문의하세요.' } },
-      { status: 400 }
+      { status: 403 }
     )
   }
 
@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
   if (user.status === 'pending') {
     return NextResponse.json(
       { data: null, error: { code: 'ACCOUNT_PENDING', message: '계정 활성화가 필요합니다. 초대 메일을 확인해 주세요.' } },
-      { status: 400 }
+      { status: 403 }
     )
   }
 
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
     if (lockedUntil && lockedUntil > now) {
       return NextResponse.json(
         { data: null, error: { code: 'ACCOUNT_LOCKED', message: '계정이 잠겼습니다. 잠시 후 다시 시도해 주세요.' } },
-        { status: 400 }
+        { status: 403 }
       )
     }
 
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json(
         { data: null, error: { code: 'ACCOUNT_LOCKED', message: '로그인 5회 연속 실패로 계정이 잠겼습니다. 15분 후 다시 시도해 주세요.' } },
-        { status: 400 }
+        { status: 403 }
       )
     }
 
@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       { data: null, error: { code: 'INVALID_CREDENTIALS', message: '이메일(사번) 또는 비밀번호가 올바르지 않습니다.' } },
-      { status: 400 }
+      { status: 401 }
     )
   }
 

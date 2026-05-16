@@ -15,6 +15,20 @@ interface CurrentUser {
   created_at?: string
 }
 
+/** 비밀번호 정책: 최소 10자, 영문·숫자·특수문자 각 1자 이상 */
+function validatePassword(pw: string): string | null {
+  if (pw.length < 10) return '비밀번호는 최소 10자 이상이어야 합니다.'
+  if (!/[A-Za-z]/.test(pw)) return '영문자를 1자 이상 포함해야 합니다.'
+  if (!/[0-9]/.test(pw)) return '숫자를 1자 이상 포함해야 합니다.'
+  if (!/[^A-Za-z0-9]/.test(pw)) return '특수문자를 1자 이상 포함해야 합니다.'
+  return null
+}
+
+interface ApiErrorBody {
+  data: null
+  error: { code: string; message: string }
+}
+
 export function MyPageContent() {
   const router = useRouter()
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
@@ -28,17 +42,11 @@ export function MyPageContent() {
   const [pwSuccess, setPwSuccess] = useState(false)
 
   useEffect(() => {
-    const supabase = createBrowserClientInstance()
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) return
-      const { data } = await supabase
-        .from('users')
-        .select('name, email, employee_id, role, color, created_at')
-        .eq('id', user.id)
-        .is('deleted_at', null)
-        .single()
-      if (data) setCurrentUser(data as unknown as CurrentUser)
-    })
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then((json: { data: CurrentUser | null; error: null } | ApiErrorBody) => {
+        if (json.data) setCurrentUser(json.data)
+      })
   }, [])
 
   const handlePwSubmit = async (e: React.FormEvent) => {
@@ -50,8 +58,9 @@ export function MyPageContent() {
       setPwError('현재 비밀번호를 입력하세요.')
       return
     }
-    if (pwForm.next.length < 8) {
-      setPwError('새 비밀번호는 8자 이상이어야 합니다.')
+    const pwValidError = validatePassword(pwForm.next)
+    if (pwValidError) {
+      setPwError(pwValidError)
       return
     }
     if (pwForm.next !== pwForm.confirm) {
@@ -59,10 +68,15 @@ export function MyPageContent() {
       return
     }
 
-    const supabase = createBrowserClientInstance()
-    const { error } = await supabase.auth.updateUser({ password: pwForm.next })
-    if (error) {
-      setPwError(error.message)
+    const res = await fetch('/api/auth/me', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ current_password: pwForm.current, new_password: pwForm.next }),
+    })
+    const json = await res.json() as ApiErrorBody | { data: { success: boolean }; error: null }
+    if (!res.ok || ('error' in json && json.error)) {
+      const errJson = json as ApiErrorBody
+      setPwError(errJson.error?.message ?? '비밀번호 변경 중 오류가 발생했습니다.')
       return
     }
     setPwSuccess(true)
@@ -72,7 +86,7 @@ export function MyPageContent() {
   const handleLogout = async () => {
     const supabase = createBrowserClientInstance()
     await supabase.auth.signOut()
-    router.push('/')
+    router.push('/login')
   }
 
   const avatarBg = currentUser?.color ?? '#475569'
@@ -166,7 +180,7 @@ export function MyPageContent() {
                   style={{ width: '100%' }}
                   value={pwForm.next}
                   onChange={e => setPwForm(f => ({ ...f, next: e.target.value }))}
-                  placeholder="새 비밀번호 (8자 이상)"
+                  placeholder="새 비밀번호 (10자 이상, 영문·숫자·특수문자 포함)"
                   autoComplete="new-password"
                 />
               </div>

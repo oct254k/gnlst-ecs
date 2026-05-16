@@ -10,8 +10,20 @@ import { ListPagination } from './list-pagination'
 import type { MockSchedule, MockUser } from '@/app/(app)/list/page'
 import type { SortCol, SortState } from './list-table'
 
-const DEFAULT_DATE_START = '2026-05-11'
-const DEFAULT_DATE_END = '2026-05-31'
+function getDefaultDateRange(): { start: string; end: string } {
+  const today = new Date()
+  const y = today.getFullYear()
+  const m = today.getMonth()
+  const d = today.getDate()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const start = `${y}-${pad(m + 1)}-${pad(d)}`
+  // 이번 달 말일: 다음 달 1일에서 하루 빼기
+  const lastDay = new Date(y, m + 1, 0).getDate()
+  const end = `${y}-${pad(m + 1)}-${pad(lastDay)}`
+  return { start, end }
+}
+
+const { start: DEFAULT_DATE_START, end: DEFAULT_DATE_END } = getDefaultDateRange()
 const PER_PAGE_DEFAULT = 20
 
 interface ListViewProps {
@@ -135,6 +147,51 @@ export function ListView({ initialSchedules, users }: ListViewProps) {
     setPage(1)
   }
 
+  async function handleExport() {
+    const ownerIds =
+      filterOwner !== 'all' && filterOwner !== 'common' ? [filterOwner] : undefined
+    const scheduleType =
+      filterType !== 'all' ? (filterType as 'personal' | 'common') : undefined
+
+    const res = await fetch('/api/export/schedules', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date_from: dateStart,
+        date_to: dateEnd,
+        owner_ids: ownerIds,
+        type: scheduleType ?? null,
+        keyword: search || null,
+      }),
+    })
+    if (!res.ok) return
+    const json = await res.json()
+    const rows: Record<string, unknown>[] = json.data ?? []
+    if (rows.length === 0) return
+
+    const headers = Object.keys(rows[0])
+    const csvLines = [
+      headers.join(','),
+      ...rows.map((row) =>
+        headers
+          .map((h) => {
+            const val = row[h] ?? ''
+            const str = String(val).replace(/"/g, '""')
+            return `"${str}"`
+          })
+          .join(','),
+      ),
+    ]
+    const bom = '﻿'
+    const blob = new Blob([bom + csvLines.join('\r\n')], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `schedules_${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   function handleRowClick(id: string) {
     const params = new URLSearchParams(searchParams.toString())
     params.set('detail', id)
@@ -161,6 +218,7 @@ export function ListView({ initialSchedules, users }: ListViewProps) {
           <button
             type="button"
             className="btn btn-secondary btn-sm"
+            onClick={handleExport}
             disabled={filtered.length === 0}
           >
             <Icon name="download" size={12} /> 엑셀 다운로드

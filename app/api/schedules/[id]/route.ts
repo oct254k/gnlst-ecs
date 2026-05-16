@@ -422,7 +422,7 @@ export async function DELETE(
 
   const { data: existingRaw, error: fetchError } = await supabase
     .from('schedules')
-    .select('id')
+    .select('id, type')
     .eq('id', id)
     .is('deleted_at', null)
     .single()
@@ -431,12 +431,16 @@ export async function DELETE(
     return errorResponse('SCHEDULE_NOT_FOUND', '일정을 찾을 수 없습니다.', 404)
   }
 
+  const existing = existingRaw as unknown as Pick<ScheduleRow, 'id' | 'type'>
+
   const updateData: ScheduleUpdate = {
     deleted_at: new Date().toISOString(),
     deleted_by: user.id,
   }
 
-  const { error } = await supabase
+  // soft delete는 Service Role로 수행 — deleted_at IS NULL SELECT 정책 우회
+  const srSupabase = createServiceRoleClient()
+  const { error } = await srSupabase
     .from('schedules')
     .update(updateData as never)
     .eq('id', id)
@@ -444,6 +448,28 @@ export async function DELETE(
 
   if (error) {
     return errorResponse('INTERNAL_ERROR', error.message, 500)
+  }
+
+  // 공통 일정 삭제 시 전체 활성 임원에게 취소 알림 발송
+  if (existing.type === 'common') {
+    const { data: executives } = await srSupabase
+      .from('users')
+      .select('id, email')
+      .eq('role', 'user')
+      .eq('status', 'active')
+      .is('deleted_at', null)
+
+    if (executives && executives.length > 0) {
+      const notifRows = executives.map((exec) => ({
+        recipient_id: exec.id,
+        recipient_email: exec.email,
+        event_type: 'common_schedule_deleted',
+        target_type: 'schedule',
+        target_id: id,
+        status: 'pending',
+      }))
+      await srSupabase.from('notification_logs').insert(notifRows as never)
+    }
   }
 
   return new NextResponse(null, { status: 204 })

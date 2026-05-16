@@ -5,7 +5,7 @@ import { Avatar } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Icon } from '@/components/ui/icon'
 
-type NotifStatus = 'sent' | 'failed' | 'retrying' | 'pending'
+type NotifStatus = 'sent' | 'failed' | 'retrying' | 'pending' | 'skipped'
 type EventType =
   | 'common_schedule_created'
   | 'common_schedule_updated'
@@ -17,6 +17,8 @@ interface NotifLog {
   id: string
   event_type: EventType
   recipient: { id: string; name: string; email: string } | null
+  recipient_email?: string
+  recipient_name?: string
   status: NotifStatus
   attempt_count: number
   last_attempted_at: string
@@ -51,6 +53,7 @@ function statusBadge(status: NotifStatus) {
     case 'failed':   return <Badge tone="danger" dot>failed</Badge>
     case 'retrying': return <Badge tone="warn" dot>retrying</Badge>
     case 'pending':  return <Badge tone="neutral" dot>pending</Badge>
+    case 'skipped':  return <Badge tone="neutral">건너뜀</Badge>
   }
 }
 
@@ -60,6 +63,7 @@ export function NotifLogTable() {
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [eventFilter, setEventFilter] = useState<string>('all')
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     fetch('/api/admin/notification-logs')
@@ -74,10 +78,17 @@ export function NotifLogTable() {
 
   const sentCount = logs.filter(l => l.status === 'sent').length
 
-  const filtered = logs.filter(l => {
+  const recipientEmail = (l: NotifLog) => l.recipient?.email ?? l.recipient_email ?? ''
+  const recipientName = (l: NotifLog) => l.recipient?.name ?? l.recipient_name ?? ''
+
+  const filteredLogs = logs.filter(l => {
     const matchStatus = statusFilter === 'all' || l.status === statusFilter
     const matchEvent = eventFilter === 'all' || l.event_type === eventFilter
-    return matchStatus && matchEvent
+    const matchSearch =
+      !search ||
+      recipientEmail(l).includes(search) ||
+      recipientName(l).includes(search)
+    return matchStatus && matchEvent && matchSearch
   })
 
   return (
@@ -100,7 +111,12 @@ export function NotifLogTable() {
         <div className="list-toolbar">
           <div className="input-with-icon" style={{ flex: 1 }}>
             <span className="ico"><Icon name="search" size={14} /></span>
-            <input className="input" placeholder="수신 이메일·이름 검색" />
+            <input
+              className="input"
+              placeholder="수신 이메일·이름 검색"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
           </div>
           <select
             className="select"
@@ -124,6 +140,7 @@ export function NotifLogTable() {
             <option value="failed">failed</option>
             <option value="retrying">retrying</option>
             <option value="pending">pending</option>
+            <option value="skipped">skipped</option>
           </select>
         </div>
       </div>
@@ -151,7 +168,7 @@ export function NotifLogTable() {
                     </td>
                   </tr>
                 )}
-                {!loading && filtered.map(l => (
+                {!loading && filteredLogs.map(l => (
                   <tr
                     key={l.id}
                     style={l.status === 'failed' ? { background: '#FFF5F5' } : undefined}
@@ -162,17 +179,17 @@ export function NotifLogTable() {
                     </td>
                     <td>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Avatar user={{ name: l.recipient?.name ?? '—' }} size="sm" />
-                        <span>{l.recipient?.name ?? '—'}</span>
+                        <Avatar user={{ name: recipientName(l) || '—' }} size="sm" />
+                        <span>{recipientName(l) || '—'}</span>
                       </span>
                     </td>
-                    <td className="muted text-sm">{l.recipient?.email ?? '—'}</td>
+                    <td className="muted text-sm">{recipientEmail(l) || '—'}</td>
                     <td>{statusBadge(l.status)}</td>
                     <td className="text-sm" style={{ textAlign: 'right' }}>{l.attempt_count}</td>
                     <td className="muted text-sm">{l.error_message ?? '—'}</td>
                   </tr>
                 ))}
-                {!loading && filtered.length === 0 && (
+                {!loading && filteredLogs.length === 0 && (
                   <tr>
                     <td colSpan={7}>
                       <div className="empty"><div className="msg">조회 결과가 없습니다.</div></div>

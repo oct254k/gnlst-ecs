@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Icon } from '@/components/ui/icon'
+import { HolidayFormModal } from './holiday-form-modal'
 import type { Holiday } from '@/lib/types'
 
 const KO_WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
@@ -27,10 +28,13 @@ interface HolidayTableProps {
 export function HolidayTable({ onToast }: HolidayTableProps) {
   const [items, setItems] = useState<Holiday[]>([])
   const [loading, setLoading] = useState(true)
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
 
   const currentYear = new Date().getFullYear()
 
-  useEffect(() => {
+  const fetchHolidays = useCallback(() => {
+    setLoading(true)
     fetch(`/api/holidays?year=${currentYear}`)
       .then(r => r.json())
       .then(json => setItems(json.data ?? []))
@@ -38,25 +42,29 @@ export function HolidayTable({ onToast }: HolidayTableProps) {
       .finally(() => setLoading(false))
   }, [currentYear])
 
-  const handleToggleActive = (id: string) => {
-    setItems(prev =>
-      prev.map(h => h.id === id ? { ...h, is_active: !h.is_active } : h)
-    )
+  useEffect(() => {
+    fetchHolidays()
+  }, [fetchHolidays])
+
+  const handleToggleActive = async (id: string, current: boolean) => {
+    await fetch(`/api/holidays/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_active: !current }),
+    })
+    setItems(prev => prev.map(h => h.id === id ? { ...h, is_active: !current } : h))
   }
 
-  const handleDelete = async (id: string) => {
-    const target = items.find(h => h.id === id)
-    if (!target) return
-    if (target.type === 'statutory') {
-      onToast?.('법정 공휴일은 삭제할 수 없습니다.')
-      return
-    }
-    await fetch(`/api/holidays/${id}`, { method: 'DELETE' })
-    setItems(prev => prev.filter(h => h.id !== id))
+  const handleDeleteConfirm = async () => {
+    if (!pendingDeleteId) return
+    await fetch(`/api/holidays/${pendingDeleteId}`, { method: 'DELETE' })
+    setItems(prev => prev.filter(h => h.id !== pendingDeleteId))
+    setPendingDeleteId(null)
     onToast?.('공휴일이 삭제되었습니다.')
   }
 
   return (
+    <>
     <div className="list-wrap">
       <div className="page-hd">
         <div className="flex-col" style={{ minWidth: 0 }}>
@@ -66,7 +74,7 @@ export function HolidayTable({ onToast }: HolidayTableProps) {
         <div className="page-hd-actions">
           <button
             className="btn btn-primary btn-sm"
-            onClick={() => onToast?.('임시 공휴일 추가 기능은 준비 중입니다.')}
+            onClick={() => setShowAddModal(true)}
           >
             <Icon name="plus" size={12} /> 공휴일 추가
           </button>
@@ -107,15 +115,15 @@ export function HolidayTable({ onToast }: HolidayTableProps) {
                       <input
                         type="checkbox"
                         checked={h.is_active}
-                        onChange={() => handleToggleActive(h.id)}
+                        onChange={() => handleToggleActive(h.id, h.is_active)}
                         style={{ cursor: 'pointer' }}
                       />
                     </td>
                     <td>
-                      {h.type !== 'statutory' && (
+                      {h.type === 'temporary' && (
                         <button
                           className="btn btn-tertiary btn-icon btn-sm"
-                          onClick={() => handleDelete(h.id)}
+                          onClick={() => setPendingDeleteId(h.id)}
                           title="삭제"
                         >
                           <Icon name="trash" size={14} />
@@ -130,5 +138,46 @@ export function HolidayTable({ onToast }: HolidayTableProps) {
         </div>
       </div>
     </div>
+
+    {showAddModal && (
+      <HolidayFormModal
+        onClose={() => setShowAddModal(false)}
+        onSaved={() => { setShowAddModal(false); fetchHolidays() }}
+      />
+    )}
+
+    {pendingDeleteId !== null && (
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.4)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+        }}
+        onClick={e => { if (e.target === e.currentTarget) setPendingDeleteId(null) }}
+      >
+        <div
+          className="card"
+          style={{ width: 340, padding: '24px 24px 20px', background: 'var(--c-bg)', borderRadius: 12 }}
+        >
+          <h2 className="h2" style={{ margin: '0 0 12px' }}>공휴일 삭제</h2>
+          <p style={{ margin: '0 0 20px', color: 'var(--c-text-2)' }}>
+            이 임시 공휴일을 삭제하시겠습니까?
+          </p>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button className="btn btn-secondary btn-sm" onClick={() => setPendingDeleteId(null)}>
+              취소
+            </button>
+            <button className="btn btn-danger btn-sm" onClick={handleDeleteConfirm}>
+              삭제
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   )
 }

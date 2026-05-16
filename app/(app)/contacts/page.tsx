@@ -1,16 +1,6 @@
 import { createUserClient } from '@/app/_lib/supabase/server'
 import { ContactsTable } from '@/components/contacts/contacts-table'
 import type { MockContact, MockCompany } from '@/components/contacts/contacts-table'
-import type { RelationshipHistory } from '@/lib/types'
-
-const EMPTY_HISTORY: RelationshipHistory = {
-  entity_type: 'company',
-  entity_name: '',
-  total_count: 0,
-  last_meeting_date: null,
-  last_executive: null,
-  meetings: [],
-}
 
 type RawContact = {
   id: string
@@ -34,6 +24,7 @@ type RawCompany = {
 export default async function ContactsPage() {
   let contacts: MockContact[] = []
   let companies: MockCompany[] = []
+  let isAdmin = false
 
   try {
     const supabase = await createUserClient()
@@ -43,6 +34,8 @@ export default async function ContactsPage() {
     } = await supabase.auth.getUser()
 
     if (user) {
+      isAdmin = user.user_metadata?.role === 'admin'
+
       const [contactsResult, companiesResult] = await Promise.all([
         supabase
           .from('contacts')
@@ -97,7 +90,7 @@ export default async function ContactsPage() {
     <ContactsTable
       contacts={contacts}
       companies={companies}
-      samsungHistory={EMPTY_HISTORY}
+      isAdmin={isAdmin}
     />
   )
 }

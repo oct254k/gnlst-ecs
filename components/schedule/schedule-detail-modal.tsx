@@ -43,7 +43,7 @@ interface ScheduleDetailModalProps {
   scheduleId: string
   onClose: () => void
   onEdit: (id: string) => void
-  onDelete: (id: string) => void
+  onDelete: (id: string, scheduleType: 'personal' | 'common', participantCount: number) => void
 }
 
 export function ScheduleDetailModal({
@@ -58,6 +58,7 @@ export function ScheduleDetailModal({
   const [error, setError] = useState<string | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [currentUserRole, setCurrentUserRole] = useState<'admin' | 'user'>('user')
+  const [participantLoading, setParticipantLoading] = useState(false)
 
   useEffect(() => {
     const supabase = createBrowserClientInstance()
@@ -86,6 +87,41 @@ export function ScheduleDetailModal({
       .catch(() => setError('일정을 불러올 수 없습니다'))
       .finally(() => setLoading(false))
   }, [scheduleId])
+
+  async function reloadSchedule() {
+    const json = await fetch(`/api/schedules/${scheduleId}`).then((r) => r.json())
+    if (!json.error) {
+      setSchedule(json.data as ScheduleWithParticipants)
+    }
+  }
+
+  async function handleJoin() {
+    if (!currentUserId || participantLoading) return
+    setParticipantLoading(true)
+    try {
+      await fetch(`/api/schedules/${scheduleId}/participants`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: currentUserId }),
+      })
+      await reloadSchedule()
+    } finally {
+      setParticipantLoading(false)
+    }
+  }
+
+  async function handleLeave() {
+    if (!currentUserId || participantLoading) return
+    setParticipantLoading(true)
+    try {
+      await fetch(`/api/schedules/${scheduleId}/participants/me`, {
+        method: 'DELETE',
+      })
+      await reloadSchedule()
+    } finally {
+      setParticipantLoading(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -317,11 +353,21 @@ export function ScheduleDetailModal({
                   <hr className="divider" />
                   <div className="flex items-center gap-2">
                     {isJoined ? (
-                      <button className="btn btn-secondary btn-sm" type="button">
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        type="button"
+                        onClick={handleLeave}
+                        disabled={participantLoading}
+                      >
                         <Icon name="x" size={12} /> 참가 취소
                       </button>
                     ) : (
-                      <button className="btn btn-primary btn-sm" type="button">
+                      <button
+                        className="btn btn-primary btn-sm"
+                        type="button"
+                        onClick={handleJoin}
+                        disabled={participantLoading}
+                      >
                         <Icon name="plus" size={12} /> 참가하기
                       </button>
                     )}
@@ -377,7 +423,7 @@ export function ScheduleDetailModal({
               <button
                 className="btn btn-tertiary"
                 type="button"
-                onClick={() => onDelete(schedule.id)}
+                onClick={() => onDelete(schedule.id, schedule.type as 'personal' | 'common', schedule.participants.length)}
               >
                 <Icon name="trash" size={12} /> 삭제
               </button>

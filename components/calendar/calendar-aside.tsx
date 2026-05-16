@@ -5,18 +5,14 @@ import type { MockUser } from './mock-data'
 interface CalendarAsideProps {
   users: MockUser[]
   layerVis: Record<string, boolean>
-  commonVis: boolean
   onLayerToggle: (userId: string, checked: boolean) => void
-  onCommonToggle: (checked: boolean) => void
   onToggleAll: () => void
 }
 
 export function CalendarAside({
   users,
   layerVis,
-  commonVis,
   onLayerToggle,
-  onCommonToggle,
   onToggleAll,
 }: CalendarAsideProps) {
   const allOn = Object.values(layerVis).every(v => v)
@@ -46,19 +42,14 @@ export function CalendarAside({
         </button>
       </div>
 
-      {/* 공통 일정 */}
+      {/* 공통 일정 — 항상 표시 */}
       <div className="cal-aside-section">
         <div className="cal-aside-title">공통 일정</div>
-        <label className="layer-row">
-          <input
-            type="checkbox"
-            checked={commonVis}
-            onChange={e => onCommonToggle(e.target.checked)}
-            style={{ flexShrink: 0 }}
-          />
+        <div className="layer-row">
           <span className="color-dot" style={{ background: 'var(--c-accent)' }} />
-          <span className="layer-name">공통 일정 표시</span>
-        </label>
+          <span className="layer-name">공통 일정</span>
+          <span style={{ color: 'var(--c-text-3)', fontSize: 11, marginLeft: 'auto' }}>항상 표시</span>
+        </div>
       </div>
 
       {/* 범례 */}

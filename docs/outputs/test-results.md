@@ -279,3 +279,32 @@ Mailpit:    http://127.0.0.1:54324
 
 ### P4 — 낮음 (파라미터명 정렬)
 15. API 파라미터명 스펙 일치: `user_ids`, `q`, `mention_ref` (CAL-002, LIS-002, LIS-003)
+
+---
+
+## 신규 시나리오 테스트 결과 (2026-05-16)
+
+| 시나리오 ID | 설명 | 결과 | 메모 |
+|---|---|---|---|
+| SC-NEW-AUTH-001 | GET /api/auth/me 프로필 조회 | ✅ PASS | 200, id/name/email/employee_id/role/status/color 포함 |
+| SC-NEW-AUTH-002 | PATCH /api/auth/me 잘못된 현재 비밀번호 → 400 | ✅ PASS | 400, error.code = INVALID_PASSWORD |
+| SC-NEW-AUTH-003 | 로그인 오류 → 401 (기존 400) | ✅ PASS | 401, error.code = INVALID_CREDENTIALS |
+| SC-NEW-HOL-001 | 임시 공휴일 POST 등록 | ✅ PASS | 201, id/holiday_date/name/type/is_active 포함 |
+| SC-NEW-HOL-002 | 공휴일 is_active PATCH 토글 | ✅ PASS | 200, is_active: false 정상 반영 |
+| SC-NEW-HOL-003 | DELETE statutory 삭제 시도 → 403 | ✅ PASS | 403, error.code = CANNOT_DELETE_STATUTORY |
+| SC-NEW-USR-001 | 사용자 role PATCH | ❌ FAIL | 404 NOT_FOUND — createAdminClient가 서비스 롤 키로 RLS 우회 실패. users_write 정책 qual=false 로 업데이트 차단. createAdminClient를 createServiceRoleClient로 교체 필요 |
+| SC-NEW-USR-002 | 사용자 status PATCH | ❌ FAIL | 404 NOT_FOUND — SC-NEW-USR-001과 동일 원인 |
+| SC-NEW-USR-003 | GET /api/users에 last_login_at 포함 | ✅ PASS | 응답 items에 last_login_at 필드 존재 확인 |
+
+---
+
+### 일정·달력·연락처·레이더 신규 테스트 (2026-05-16)
+
+| 시나리오 ID | 설명 | 결과 | 메모 |
+|---|---|---|---|
+| SC-NEW-CAL-001 | GET /api/calendar/day/:date | ✅ PASS | 200, `{ data: { date, holiday, schedules } }` 구조 정상. schedules 1건 포함 |
+| SC-NEW-SCH-001 | 공통 일정 참가 POST | ✅ PASS | 201, `{ id, schedule_id, user_id, status:"joined", joined_at }` 반환 |
+| SC-NEW-SCH-002 | 참가 취소 DELETE | ✅ PASS | 204 No Content 정상 |
+| SC-NEW-SCH-003 | 공통 일정 DELETE → notification_logs 생성 | ❌ FAIL | 500 INTERNAL_ERROR — "new row violates row-level security policy for table 'schedules'". 원인: userClient로 `deleted_at` UPDATE 시 SELECT RLS(deleted_at IS NULL) 가 RETURNING 체크에서 updated row 를 차단. WITH CHECK(true) 에도 불구하고 PostgREST가 UPDATE 후 row visibility 재검증 시 실패. createServiceRoleClient 사용으로 해결 가능 |
+| SC-NEW-CON-001 | 연락처 POST status 필드 | ✅ PASS | 201, `data.status = "auto"` 정상 반환 |
+| SC-NEW-RAD-001 | 레이더 가용성 POST | ✅ PASS | 200, slots 45건, 각 slot에 date/start_time/end_time/status/available_count/total_count/conflicted_users 포함 |

@@ -28,6 +28,7 @@ export function ProxyTable({ onToast }: ProxyTableProps) {
   const [targetUserId, setTargetUserId] = useState('')
   const [users, setUsers] = useState<UserOption[]>([])
   const [granting, setGranting] = useState(false)
+  const [pendingRevokeId, setPendingRevokeId] = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/api/proxy-permissions?active=true')
@@ -46,9 +47,11 @@ export function ProxyTable({ onToast }: ProxyTableProps) {
 
   const activeCount = items.filter(p => p.revoked_at === null).length
 
-  const handleRevoke = async (id: string) => {
-    await fetch(`/api/proxy-permissions/${id}`, { method: 'DELETE' })
-    setItems(prev => prev.filter(p => p.id !== id))
+  const handleRevokeConfirm = async () => {
+    if (!pendingRevokeId) return
+    await fetch(`/api/proxy-permissions/${pendingRevokeId}`, { method: 'DELETE' })
+    setItems(prev => prev.filter(p => p.id !== pendingRevokeId))
+    setPendingRevokeId(null)
     onToast?.('대리 입력 권한이 해제되었습니다.')
   }
 
@@ -56,11 +59,16 @@ export function ProxyTable({ onToast }: ProxyTableProps) {
     if (!proxyUserId || !targetUserId) return
     setGranting(true)
     try {
-      await fetch('/api/proxy-permissions', {
+      const res = await fetch('/api/proxy-permissions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ proxy_user_id: proxyUserId, target_user_id: targetUserId }),
       })
+      if (!res.ok) {
+        const json = await res.json()
+        onToast?.(json.error?.message ?? '권한 부여에 실패했습니다.')
+        return
+      }
       setShowForm(false)
       setProxyUserId('')
       setTargetUserId('')
@@ -79,6 +87,7 @@ export function ProxyTable({ onToast }: ProxyTableProps) {
   const activeItems = items.filter(p => p.revoked_at === null)
 
   return (
+    <>
     <div className="list-wrap">
       <div className="page-hd">
         <div className="flex-col" style={{ minWidth: 0 }}>
@@ -196,7 +205,7 @@ export function ProxyTable({ onToast }: ProxyTableProps) {
                     <td>
                       <button
                         className="btn btn-tertiary btn-sm"
-                        onClick={() => handleRevoke(p.id)}
+                        onClick={() => setPendingRevokeId(p.id)}
                       >
                         권한 회수
                       </button>
@@ -218,5 +227,39 @@ export function ProxyTable({ onToast }: ProxyTableProps) {
         </div>
       </div>
     </div>
+
+    {pendingRevokeId !== null && (
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.4)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+        }}
+        onClick={e => { if (e.target === e.currentTarget) setPendingRevokeId(null) }}
+      >
+        <div
+          className="card"
+          style={{ width: 340, padding: '24px 24px 20px', background: 'var(--c-bg)', borderRadius: 12 }}
+        >
+          <h2 className="h2" style={{ margin: '0 0 12px' }}>권한 회수</h2>
+          <p style={{ margin: '0 0 20px', color: 'var(--c-text-2)' }}>
+            이 대리권한을 회수하시겠습니까?
+          </p>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button className="btn btn-secondary btn-sm" onClick={() => setPendingRevokeId(null)}>
+              취소
+            </button>
+            <button className="btn btn-danger btn-sm" onClick={handleRevokeConfirm}>
+              회수
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   )
 }

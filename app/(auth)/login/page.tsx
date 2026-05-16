@@ -48,7 +48,13 @@ function LoginForm() {
         return
       }
 
-      router.push('/dashboard')
+      // redirect 파라미터가 있으면 해당 경로로, 없으면 /dashboard
+      const rawRedirect = searchParams.get('redirect') ?? ''
+      const isSafeRedirect =
+        rawRedirect.startsWith('/') &&
+        !rawRedirect.startsWith('//') &&
+        !rawRedirect.includes('://')
+      router.push(isSafeRedirect ? rawRedirect : '/dashboard')
       router.refresh()
     } catch {
       setErrorMessage('네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.')

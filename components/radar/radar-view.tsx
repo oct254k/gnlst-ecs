@@ -90,6 +90,7 @@ export function RadarView({ execs, defaultStart, defaultEnd }: RadarViewProps) {
   const [showGrid, setShowGrid] = useState(false)
   const [apiSlots, setApiSlots] = useState<ApiSlot[]>([])
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const dateRangeError: string | null = (() => {
     if (end < start) return '종료일이 시작일보다 앞섭니다'
@@ -140,6 +141,7 @@ export function RadarView({ execs, defaultStart, defaultEnd }: RadarViewProps) {
     if (!canSearch) return
     setLoading(true)
     setShowGrid(false)
+    setError(null)
     try {
       const res = await fetch('/api/radar/availability', {
         method: 'POST',
@@ -155,9 +157,11 @@ export function RadarView({ execs, defaultStart, defaultEnd }: RadarViewProps) {
       if (res.ok && json.data?.slots) {
         setApiSlots(json.data.slots)
         setShowGrid(true)
+      } else {
+        setError('가용성 조회에 실패했습니다. 다시 시도해주세요.')
       }
     } catch {
-      // 조회 실패 시 그리드 미표시
+      setError('가용성 조회에 실패했습니다. 다시 시도해주세요.')
     } finally {
       setLoading(false)
     }
@@ -168,17 +172,32 @@ export function RadarView({ execs, defaultStart, defaultEnd }: RadarViewProps) {
     params.set('modal', 'form')
     params.set('date', date)
     params.set('time_slot', slot)
+    params.set('participant_ids', [...selected].join(','))
     router.replace(`?${params.toString()}`)
   }
 
   function handleQuickRange(i: number) {
-    const today = '2026-05-14'
+    const today = new Date().toISOString().slice(0, 10)
+    const dow = new Date(today + 'T00:00:00').getDay()
+    // 월요일 기준 이번 주 시작 (한국식)
+    const diffToMonday = (dow + 6) % 7
+    const thisMonday = addDays(today, -diffToMonday)
+    const thisSunday = addDays(thisMonday, 6)
+    const nextMonday = addDays(thisMonday, 7)
+    const nextSunday = addDays(thisMonday, 13)
+    const firstOfMonth = today.slice(0, 8) + '01'
+    const lastOfMonth = (() => {
+      const d = new Date(today + 'T00:00:00')
+      d.setMonth(d.getMonth() + 1, 0)
+      return d.toISOString().slice(0, 10)
+    })()
     if (i === 0) { setStart(today); setEnd(addDays(today, 7)) }
-    else if (i === 1) { setStart('2026-05-11'); setEnd('2026-05-17') }
-    else if (i === 2) { setStart('2026-05-18'); setEnd('2026-05-24') }
-    else { setStart('2026-05-01'); setEnd('2026-05-31') }
+    else if (i === 1) { setStart(thisMonday); setEnd(thisSunday) }
+    else if (i === 2) { setStart(nextMonday); setEnd(nextSunday) }
+    else { setStart(firstOfMonth); setEnd(lastOfMonth) }
     setShowGrid(false)
     setApiSlots([])
+    setError(null)
   }
 
   return (
@@ -269,12 +288,25 @@ export function RadarView({ execs, defaultStart, defaultEnd }: RadarViewProps) {
                 </div>
               </div>
 
-              {!grid && (
+              {!grid && !error && (
                 <div className="empty" style={{ padding: 80 }}>
                   <div className="emoji">🎯</div>
                   <div className="msg">
                     참석자와 기간을 선택한 후<br />&apos;가능 시간 조회&apos;를 눌러주세요
                   </div>
+                </div>
+              )}
+
+              {error && (
+                <div className="empty" style={{ padding: 80 }}>
+                  <div className="msg" style={{ color: 'var(--c-warn)', marginBottom: 12 }}>{error}</div>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={handleSearch}
+                  >
+                    다시 시도
+                  </button>
                 </div>
               )}
 

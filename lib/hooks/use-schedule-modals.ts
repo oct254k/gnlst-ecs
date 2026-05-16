@@ -5,7 +5,7 @@ import { useCallback, useMemo } from 'react'
 import type { ScheduleType } from '@/lib/types'
 
 export type ActiveModal =
-  | { kind: 'form'; scheduleType?: ScheduleType; date?: string; id?: string }
+  | { kind: 'form'; scheduleType?: ScheduleType; date?: string; id?: string; participantIds?: string[] }
   | { kind: 'detail'; id: string }
   | { kind: 'delete'; id: string }
   | null
@@ -14,6 +14,7 @@ export interface OpenFormOptions {
   date?: string
   type?: ScheduleType
   id?: string
+  participantIds?: string[]
 }
 
 export function useScheduleModals() {
@@ -36,11 +37,13 @@ export function useScheduleModals() {
     if (modal === 'form') {
       const type = searchParams.get('type') as ScheduleType | null
       const date = searchParams.get('date') ?? undefined
+      const pids = searchParams.get('participant_ids')
       return {
         kind: 'form',
         scheduleType: type ?? undefined,
         date,
         id: id ?? undefined,
+        participantIds: pids ? pids.split(',').filter(Boolean) : undefined,
       }
     }
     return null
@@ -56,12 +59,16 @@ export function useScheduleModals() {
         params.set('id', opts.id)
         params.delete('type')
         params.delete('date')
+        params.delete('participant_ids')
       } else {
         params.delete('id')
         if (opts.type) params.set('type', opts.type)
         else params.delete('type')
         if (opts.date) params.set('date', opts.date)
         else params.delete('date')
+        if (opts.participantIds && opts.participantIds.length > 0)
+          params.set('participant_ids', opts.participantIds.join(','))
+        else params.delete('participant_ids')
       }
       router.push(`${pathname}?${params.toString()}`)
     },
@@ -102,6 +109,7 @@ export function useScheduleModals() {
     params.delete('id')
     params.delete('type')
     params.delete('date')
+    params.delete('participant_ids')
     params.delete('detail')
     params.delete('confirm')
     router.push(`${pathname}?${params.toString()}`)

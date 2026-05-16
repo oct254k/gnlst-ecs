@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Avatar } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Icon } from '@/components/ui/icon'
@@ -23,6 +23,8 @@ export function UserTable() {
   const [roleFilter, setRoleFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [inviteOpen, setInviteOpen] = useState(false)
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null)
+  const menuRef = useRef<HTMLDivElement | null>(null)
 
   const fetchUsers = useCallback(() => {
     setLoading(true)
@@ -36,6 +38,37 @@ export function UserTable() {
   useEffect(() => {
     fetchUsers()
   }, [fetchUsers])
+
+  useEffect(() => {
+    if (!activeMenuId) return
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setActiveMenuId(null)
+      }
+    }
+    document.addEventListener('click', handleClick)
+    return () => document.removeEventListener('click', handleClick)
+  }, [activeMenuId])
+
+  const handleRoleChange = async (id: string, role: 'admin' | 'user') => {
+    setActiveMenuId(null)
+    await fetch(`/api/users/${id}/role`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role }),
+    })
+    fetchUsers()
+  }
+
+  const handleStatusChange = async (id: string, status: 'active' | 'inactive') => {
+    setActiveMenuId(null)
+    await fetch(`/api/users/${id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    })
+    fetchUsers()
+  }
 
   const filtered = users.filter(u => {
     const matchSearch =
@@ -151,10 +184,48 @@ export function UserTable() {
                     </td>
                     <td>{statusBadge(u.status)}</td>
                     <td className="muted text-sm">{u.last_login_at ?? '—'}</td>
-                    <td>
-                      <button className="btn btn-tertiary btn-icon btn-sm">
+                    <td style={{ position: 'relative' }}>
+                      <button
+                        className="btn btn-tertiary btn-icon btn-sm"
+                        onClick={e => {
+                          e.stopPropagation()
+                          setActiveMenuId(prev => prev === u.id ? null : u.id)
+                        }}
+                      >
                         <Icon name="moreV" size={14} />
                       </button>
+                      {activeMenuId === u.id && (
+                        <div
+                          ref={menuRef}
+                          style={{
+                            position: 'absolute',
+                            right: 0,
+                            top: '100%',
+                            zIndex: 100,
+                            background: 'var(--c-bg)',
+                            border: '1px solid var(--c-border)',
+                            borderRadius: 8,
+                            boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+                            minWidth: 160,
+                            overflow: 'hidden',
+                          }}
+                        >
+                          <button
+                            className="btn btn-tertiary"
+                            style={{ width: '100%', textAlign: 'left', borderRadius: 0, padding: '8px 14px' }}
+                            onClick={() => handleRoleChange(u.id, u.role === 'admin' ? 'user' : 'admin')}
+                          >
+                            {u.role === 'admin' ? '임원으로 변경' : '관리자로 변경'}
+                          </button>
+                          <button
+                            className="btn btn-tertiary"
+                            style={{ width: '100%', textAlign: 'left', borderRadius: 0, padding: '8px 14px' }}
+                            onClick={() => handleStatusChange(u.id, u.status === 'active' ? 'inactive' : 'active')}
+                          >
+                            {u.status === 'active' ? '비활성화' : '활성화'}
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}

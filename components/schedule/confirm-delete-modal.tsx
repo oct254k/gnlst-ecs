@@ -6,12 +6,18 @@ import { deleteSchedule } from '@/lib/actions/schedules'
 
 interface ConfirmDeleteModalProps {
   scheduleId: string
+  /** 공통 일정 여부 — 있으면 취소 알림 문구 표시 */
+  scheduleType?: 'personal' | 'common'
+  /** 공통 일정의 참가자 수 */
+  participantCount?: number
   onClose: () => void
   onDeleted?: () => void
 }
 
 export function ConfirmDeleteModal({
   scheduleId,
+  scheduleType,
+  participantCount,
   onClose,
   onDeleted,
 }: ConfirmDeleteModalProps) {
@@ -51,7 +57,11 @@ export function ConfirmDeleteModal({
           </button>
         </div>
         <div className="modal-bd">
-          <div className="mb-3">이 일정을 삭제하시겠습니까?</div>
+          <div className="mb-3">
+            {scheduleType === 'common' && typeof participantCount === 'number'
+              ? `이 일정을 삭제하시겠습니까? 참가자 ${participantCount}명에게 취소 알림이 발송됩니다.`
+              : '이 일정을 삭제하시겠습니까?'}
+          </div>
           <div className="muted text-sm">
             ※ 삭제 후에는 복원이 불가능합니다.
           </div>

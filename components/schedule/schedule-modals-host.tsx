@@ -1,5 +1,6 @@
 'use client'
 
+import { useRef } from 'react'
 import { useScheduleModals } from '@/lib/hooks/use-schedule-modals'
 import { ScheduleFormModal } from './schedule-form-modal'
 import { ScheduleDetailModal } from './schedule-detail-modal'
@@ -19,6 +20,9 @@ export function ScheduleModalsHost() {
   const { activeModal, closeModal, openForm, openDetail, openDeleteConfirm } =
     useScheduleModals()
 
+  // 삭제 확인 모달에 전달할 일정 메타 (URL 변경 시에도 유지)
+  const deleteMetaRef = useRef<{ scheduleType: 'personal' | 'common'; participantCount: number } | null>(null)
+
   if (!activeModal) return null
 
   if (activeModal.kind === 'form') {
@@ -27,6 +31,7 @@ export function ScheduleModalsHost() {
         editId={activeModal.id}
         initialType={activeModal.scheduleType}
         initialDate={activeModal.date}
+        initialParticipantIds={activeModal.participantIds}
         onClose={closeModal}
       />
     )
@@ -38,15 +43,21 @@ export function ScheduleModalsHost() {
         scheduleId={activeModal.id}
         onClose={closeModal}
         onEdit={(id) => openForm({ id })}
-        onDelete={(id) => openDeleteConfirm(id)}
+        onDelete={(id, scheduleType, participantCount) => {
+          deleteMetaRef.current = { scheduleType, participantCount }
+          openDeleteConfirm(id)
+        }}
       />
     )
   }
 
   if (activeModal.kind === 'delete') {
+    const meta = deleteMetaRef.current
     return (
       <ConfirmDeleteModal
         scheduleId={activeModal.id}
+        scheduleType={meta?.scheduleType}
+        participantCount={meta?.participantCount}
         onClose={() => openDetail(activeModal.id)}
         onDeleted={closeModal}
       />

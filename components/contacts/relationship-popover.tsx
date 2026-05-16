@@ -8,10 +8,13 @@ import type { RelationshipHistory } from '@/lib/types'
 interface RelationshipPopoverProps {
   target: { id: string; name: string; type: 'contact' | 'company' }
   history: RelationshipHistory | null
+  loading: boolean
+  error: string | null
+  onRetry: () => void
   onClose: () => void
 }
 
-export function RelationshipPopover({ target, history, onClose }: RelationshipPopoverProps) {
+export function RelationshipPopover({ target, history, loading, error, onRetry, onClose }: RelationshipPopoverProps) {
   const ref = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
@@ -78,11 +81,36 @@ export function RelationshipPopover({ target, history, onClose }: RelationshipPo
 
         {/* 바디 */}
         <div className="card-bd" style={{ overflowY: 'auto' }}>
-          {!history ? (
+          {loading && (
+            <div style={{ padding: 32, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {[80, 60, 100].map((w, i) => (
+                <div
+                  key={i}
+                  style={{
+                    height: 14,
+                    width: `${w}%`,
+                    background: 'var(--c-divider)',
+                    borderRadius: 4,
+                    animation: 'pulse 1.5s ease-in-out infinite',
+                  }}
+                />
+              ))}
+            </div>
+          )}
+          {!loading && error && (
+            <div className="empty" style={{ padding: 32 }}>
+              <div className="muted text-sm" style={{ color: 'var(--c-warn)', marginBottom: 12 }}>{error}</div>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={onRetry}>
+                다시 시도
+              </button>
+            </div>
+          )}
+          {!loading && !error && !history && (
             <div className="empty" style={{ padding: 32 }}>
               <div className="muted text-sm">관련 미팅 기록이 없습니다</div>
             </div>
-          ) : (
+          )}
+          {!loading && !error && history && (
             <>
               {/* 요약 */}
               <div

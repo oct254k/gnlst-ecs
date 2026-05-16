@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Icon } from '@/components/ui/icon'
 import { Segment } from '@/components/ui/segment'
 import { createBrowserClientInstance } from '@/app/_lib/supabase/client'
-import { createSchedule, updateSchedule } from '@/lib/actions/schedules'
+import { createSchedule } from '@/lib/actions/schedules'
 import type { ScheduleType, TimeSlot } from '@/lib/types'
 
 interface ExecUser {
@@ -19,11 +19,19 @@ interface ProxyTarget {
   name: string
 }
 
+interface MentionChip {
+  reference_type: 'contact' | 'company'
+  reference_id: string
+  display_name: string
+}
+
 interface ScheduleFormModalProps {
   /** 수정 시 기존 일정 ID */
   editId?: string
   initialType?: ScheduleType
   initialDate?: string
+  /** URL 파라미터에서 전달된 초기 참가자 ID 목록 */
+  initialParticipantIds?: string[]
   onClose: () => void
   onSaved?: () => void
 }
@@ -32,6 +40,7 @@ export function ScheduleFormModal({
   editId,
   initialType,
   initialDate,
+  initialParticipantIds,
   onClose,
   onSaved,
 }: ScheduleFormModalProps) {
@@ -57,9 +66,15 @@ export function ScheduleFormModal({
   const [endTime, setEndTime] = useState('10:00')
   const [location, setLocation] = useState('')
   const [memo, setMemo] = useState('')
-  const [participantIds, setParticipantIds] = useState<string[]>([])
+  const [participantIds, setParticipantIds] = useState<string[]>(initialParticipantIds ?? [])
   const [toast, setToast] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+
+  // 멘션 상태
+  const [mentions, setMentions] = useState<MentionChip[]>([])
+  const [mentionQuery, setMentionQuery] = useState('')
+  const [mentionResults, setMentionResults] = useState<MentionChip[]>([])
+  const [mentionDebounceTimer, setMentionDebounceTimer] = useState<ReturnType<typeof setTimeout> | null>(null)
 
   // 임원 목록 + 대리 권한 목록
   const [execUsers, setExecUsers] = useState<ExecUser[]>([])
@@ -112,6 +127,13 @@ export function ScheduleFormModal({
         setLocation(s.location ?? '')
         setMemo(s.memo ?? '')
         setParticipantIds(s.participants?.map((p: { id: string }) => p.id) ?? [])
+        setMentions(
+          (s.mentions ?? []).map((m: { reference_type: 'contact' | 'company'; reference_id: string; display_name: string }) => ({
+            reference_type: m.reference_type,
+            reference_id: m.reference_id,
+            display_name: m.display_name,
+          }))
+        )
       })
       .catch(() => {})
   }, [editId])
@@ -136,6 +158,39 @@ export function ScheduleFormModal({
     setTimeout(() => setToast(null), 2500)
   }
 
+  function handleMentionQueryChange(q: string) {
+    setMentionQuery(q)
+    if (mentionDebounceTimer) clearTimeout(mentionDebounceTimer)
+    if (!q.trim()) {
+      setMentionResults([])
+      return
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/mentions/autocomplete?q=${encodeURIComponent(q)}`)
+        const json = await res.json()
+        setMentionResults((json.data ?? []) as MentionChip[])
+      } catch {
+        setMentionResults([])
+      }
+    }, 300)
+    setMentionDebounceTimer(timer)
+  }
+
+  function handleMentionSelect(chip: MentionChip) {
+    if (!mentions.some((m) => m.reference_type === chip.reference_type && m.reference_id === chip.reference_id)) {
+      setMentions((prev) => [...prev, chip])
+    }
+    setMentionQuery('')
+    setMentionResults([])
+  }
+
+  function handleMentionRemove(chip: MentionChip) {
+    setMentions((prev) =>
+      prev.filter((m) => !(m.reference_type === chip.reference_type && m.reference_id === chip.reference_id))
+    )
+  }
+
   function validate(): string | null {
     if (!title.trim()) return '일정 내용을 입력해주세요'
     if (title.trim().length > 200) return '일정 내용은 200자 이내로 입력해주세요'
@@ -157,18 +212,28 @@ export function ScheduleFormModal({
     setSaving(true)
 
     if (isEdit && editId) {
-      const result = await updateSchedule(editId, {
-        title: title.trim(),
-        schedule_date: date,
-        time_slot: isAllDay ? 'allday' : slot,
-        start_time: isAllDay ? null : startTime || null,
-        end_time: isAllDay ? null : endTime || null,
-        location: location.trim() || null,
-        memo: memo.trim() || null,
+      const res = await fetch(`/api/schedules/${editId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: title.trim(),
+          schedule_date: date,
+          time_slot: isAllDay ? 'allday' : slot,
+          start_time: isAllDay ? null : startTime || null,
+          end_time: isAllDay ? null : endTime || null,
+          location: location.trim() || null,
+          memo: memo.trim() || null,
+          participant_ids: type === 'common' ? participantIds : undefined,
+          mentions: mentions.map((m) => ({
+            reference_type: m.reference_type,
+            reference_id: m.reference_id,
+          })),
+        }),
       })
-      if (!result.success) {
+      const json = await res.json()
+      if (!res.ok || json.error) {
         setSaving(false)
-        showToast(result.error ?? '저장에 실패했습니다')
+        showToast(json.error?.message ?? '저장에 실패했습니다')
         return
       }
     } else {
@@ -183,8 +248,14 @@ export function ScheduleFormModal({
         location: location.trim() || null,
         memo: memo.trim() || null,
         owner_id: ownerId,
+        // P3-2: 대리 입력 시 owner_id = 임원ID, on_behalf_of_id = 임원ID.
+        // created_by는 서버에서 auth.uid() (= proxy 유저)로 자동 설정됨.
         on_behalf_of_id: ownerId !== currentUserId ? ownerId : null,
         participant_ids: type === 'common' ? participantIds : [],
+        mentions: mentions.map((m) => ({
+          reference_type: m.reference_type,
+          reference_id: m.reference_id,
+        })),
       })
       if (!result.success) {
         setSaving(false)
@@ -480,6 +551,81 @@ export function ScheduleFormModal({
               value={memo}
               onChange={(e) => setMemo(e.target.value)}
             />
+          </div>
+
+          {/* 멘션 */}
+          <div className="field mb-3">
+            <div className="field-label">멘션 추가</div>
+            <div className="flex gap-1 mb-2" style={{ flexWrap: 'wrap' }}>
+              {mentions.map((chip) => (
+                <span
+                  key={`${chip.reference_type}-${chip.reference_id}`}
+                  className="chip"
+                  style={{
+                    background: 'var(--c-primary-soft)',
+                    color: 'var(--c-primary)',
+                    borderColor: 'transparent',
+                  }}
+                >
+                  @{chip.display_name}
+                  <button
+                    className="x"
+                    type="button"
+                    onClick={() => handleMentionRemove(chip)}
+                    aria-label={`${chip.display_name} 제거`}
+                  >
+                    <Icon name="x" size={10} />
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div style={{ position: 'relative' }}>
+              <input
+                className="input"
+                placeholder="이름으로 검색 (연락처, 회사)"
+                value={mentionQuery}
+                onChange={(e) => handleMentionQueryChange(e.target.value)}
+                autoComplete="off"
+              />
+              {mentionResults.length > 0 && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    zIndex: 10,
+                    background: 'var(--c-panel)',
+                    border: '1px solid var(--c-border)',
+                    borderRadius: 'var(--rd-md)',
+                    boxShadow: 'var(--shadow-md)',
+                    maxHeight: 200,
+                    overflowY: 'auto',
+                  }}
+                >
+                  {mentionResults.map((item) => (
+                    <button
+                      key={`${item.reference_type}-${item.reference_id}`}
+                      type="button"
+                      className="btn btn-link btn-sm"
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '6px 12px',
+                        borderRadius: 0,
+                      }}
+                      onClick={() => handleMentionSelect(item)}
+                    >
+                      <span className="muted text-sm" style={{ marginRight: 4 }}>
+                        {item.reference_type === 'contact' ? '연락처' : '회사'}
+                      </span>
+                      {item.display_name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

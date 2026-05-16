@@ -1,9 +1,10 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { CalendarSchedule } from '@/lib/types'
 import type { Holiday } from '@/lib/types'
+import type { ScheduleType } from '@/lib/types'
 import type { MockUser } from './mock-data'
 import { Segment } from '@/components/ui/segment'
 import { Icon } from '@/components/ui/icon'
@@ -11,6 +12,7 @@ import { MonthView } from './month-view'
 import { WeekView } from './week-view'
 import { DayView } from './day-view'
 import { CalendarAside } from './calendar-aside'
+import { DayDetailPanel } from './day-detail-panel'
 import {
   navigateDate,
   formatMonthTitle,
@@ -43,27 +45,69 @@ export function CalendarView({
   const [view, setView] = useState<ViewType>(initialView)
   const [baseDate, setBaseDate] = useState(initialDate)
 
-  // 임원 레이어 체크박스 상태 (기본: 모두 ON)
+  // 임원 레이어 체크박스 상태 (기본: 모두 ON, localStorage 복원)
   const [layerVis, setLayerVis] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(users.map(u => [u.id, true]))
   )
-  const [commonVis, setCommonVis] = useState(true)
 
-  // 필터링
+  // localStorage에서 layerVis 복원 (hydration 안전)
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('cal-layer-vis')
+      if (stored) {
+        // onIds: ON 상태였던 userId 배열. 저장 목록에 없으면 OFF.
+        // 새로 추가된 userId(저장 당시 존재하지 않던 임원)는 기본 ON으로 처리.
+        const onIds = new Set<string>(JSON.parse(stored) as string[])
+        const storedAny = onIds.size > 0
+        setLayerVis(
+          Object.fromEntries(
+            users.map(u => {
+              // 저장 당시 목록에 이 user가 있었는지 알 수 없으므로:
+              // 저장된 값이 1개 이상 있으면 포함 여부로 판단, 저장이 빈 배열이면 모두 OFF
+              const inStored = onIds.has(u.id)
+              return [u.id, storedAny ? inStored : false]
+            })
+          )
+        )
+      }
+    } catch {
+      // localStorage 접근 실패 시 기본값 유지
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // layerVis 변경 시 localStorage 저장 (ON인 userId 배열 저장)
+  useEffect(() => {
+    try {
+      const onIds = Object.entries(layerVis)
+        .filter(([, v]) => v)
+        .map(([k]) => k)
+      localStorage.setItem('cal-layer-vis', JSON.stringify(onIds))
+    } catch {
+      // 무시
+    }
+  }, [layerVis])
+
+  // 일 상세 패널 열린 날짜
+  const [selectedDay, setSelectedDay] = useState<string | null>(null)
+
+  // 필터링 (공통 일정은 항상 표시 — P2-2)
   const visibleSchedules = useMemo(
     () =>
       schedules.filter(s => {
-        if (s.type === 'common') return commonVis
-        return s.owner ? (layerVis[s.owner.id] ?? true) : commonVis
+        if (s.type === 'common') return true
+        return s.owner ? (layerVis[s.owner.id] ?? true) : true
       }),
-    [schedules, layerVis, commonVis]
+    [schedules, layerVis]
   )
 
   // URL에 modal=form&date= 추가 (기존 파라미터 유지)
-  function openCreate(date: string) {
+  function openCreate(date: string, type?: ScheduleType) {
     const params = new URLSearchParams(searchParams.toString())
     params.set('modal', 'form')
     params.set('date', date)
+    if (type) params.set('type', type)
+    else params.delete('type')
     router.push(`?${params.toString()}`)
   }
 
@@ -110,7 +154,7 @@ export function CalendarView({
           <div className="sub">{getTitle()}</div>
         </div>
         <div className="page-hd-actions">
-          <button className="btn btn-secondary btn-sm" onClick={() => openCreate(today)}>
+          <button className="btn btn-secondary btn-sm" onClick={() => openCreate(today, 'common')}>
             + 공통 일정
           </button>
           <button className="btn btn-primary btn-sm" onClick={() => openCreate(today)}>
@@ -154,7 +198,7 @@ export function CalendarView({
               today={today}
               schedules={visibleSchedules}
               holidays={holidays}
-              onCellClick={openCreate}
+              onCellClick={date => setSelectedDay(date)}
               onEventClick={openDetail}
             />
           )}
@@ -181,12 +225,23 @@ export function CalendarView({
         <CalendarAside
           users={users}
           layerVis={layerVis}
-          commonVis={commonVis}
           onLayerToggle={handleLayerToggle}
-          onCommonToggle={setCommonVis}
           onToggleAll={handleToggleAll}
         />
       </div>
+
+      <DayDetailPanel
+        date={selectedDay}
+        onClose={() => setSelectedDay(null)}
+        onCreateSchedule={date => {
+          setSelectedDay(null)
+          openCreate(date)
+        }}
+        onScheduleClick={id => {
+          setSelectedDay(null)
+          openDetail(id)
+        }}
+      />
     </div>
   )
 }

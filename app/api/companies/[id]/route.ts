@@ -28,6 +28,26 @@ export async function PATCH(
     aliases?: string[]
   }
 
+  // alias 중복 검사 (P2-15): 변경되는 aliases가 다른 회사에 이미 사용 중인지 확인
+  if (body.aliases !== undefined) {
+    for (const alias of body.aliases) {
+      if (!alias.trim()) continue
+      const { data: dup } = await supabase
+        .from('companies')
+        .select('id')
+        .neq('id', id)
+        .or(`name.ilike.${alias.trim()},aliases.cs.{${alias.trim()}}`)
+        .is('deleted_at', null)
+        .limit(1)
+      if (dup && dup.length > 0) {
+        return NextResponse.json(
+          { data: null, error: { code: 'COMPANY_NAME_DUPLICATE', message: `별칭 "${alias}"이 이미 다른 회사에 사용 중입니다` } },
+          { status: 409 }
+        )
+      }
+    }
+  }
+
   const updatePayload: Record<string, unknown> = {}
   if (body.name !== undefined) updatePayload.name = body.name
   if (body.aliases !== undefined) updatePayload.aliases = body.aliases

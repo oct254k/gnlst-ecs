@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Segment } from '@/components/ui/segment'
 
@@ -42,8 +43,11 @@ interface NotificationListProps {
 }
 
 export function NotificationList({ initialItems }: NotificationListProps = {}) {
+  const router = useRouter()
   const [items, setItems] = useState<NotifItem[]>(initialItems ?? [])
   const [filter, setFilter] = useState<'unread' | 'all'>('unread')
+  const [typeFilter, setTypeFilter] = useState<string>('all')
+  const [periodFilter, setPeriodFilter] = useState<string>('all')
 
   useEffect(() => {
     if (initialItems) {
@@ -58,9 +62,27 @@ export function NotificationList({ initialItems }: NotificationListProps = {}) {
 
   const unreadCount = items.filter(n => n.read_at === null).length
 
-  const displayed = filter === 'unread'
-    ? items.filter(n => n.read_at === null)
-    : items
+  const filteredItems = useMemo(() => {
+    const now = new Date()
+    return items.filter(n => {
+      if (filter === 'unread' && n.read_at !== null) return false
+      if (typeFilter !== 'all' && n.event_type !== typeFilter) return false
+      if (periodFilter !== 'all') {
+        const sentDate = new Date(n.sent_at)
+        if (periodFilter === 'today') {
+          const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+          if (sentDate < todayStart) return false
+        } else if (periodFilter === 'week') {
+          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+          if (sentDate < weekAgo) return false
+        } else if (periodFilter === 'month') {
+          const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+          if (sentDate < monthAgo) return false
+        }
+      }
+      return true
+    })
+  }, [items, filter, typeFilter, periodFilter])
 
   const markAllRead = () => {
     fetch('/api/notifications/read-all', { method: 'PATCH' }).catch(() => {})
@@ -100,12 +122,27 @@ export function NotificationList({ initialItems }: NotificationListProps = {}) {
               { value: 'all',    label: `전체 (${items.length})` },
             ]}
           />
-          <select className="select" style={{ width: 160 }}>
-            <option>전체 유형</option>
+          <select
+            className="select"
+            style={{ width: 160 }}
+            value={typeFilter}
+            onChange={e => setTypeFilter(e.target.value)}
+          >
+            <option value="all">전체 유형</option>
+            {(Object.keys(EVENT_LABEL) as EventType[]).map(k => (
+              <option key={k} value={k}>{EVENT_LABEL[k]}</option>
+            ))}
           </select>
-          <select className="select" style={{ width: 140 }}>
-            <option>최근 7일</option>
-            <option>최근 30일</option>
+          <select
+            className="select"
+            style={{ width: 140 }}
+            value={periodFilter}
+            onChange={e => setPeriodFilter(e.target.value)}
+          >
+            <option value="all">전체 기간</option>
+            <option value="today">오늘</option>
+            <option value="week">최근 7일</option>
+            <option value="month">최근 30일</option>
           </select>
         </div>
       </div>
@@ -113,12 +150,12 @@ export function NotificationList({ initialItems }: NotificationListProps = {}) {
       <div className="main-scroll">
         <div className="page-body" style={{ paddingTop: 0 }}>
           <div className="card">
-            {displayed.length === 0 && (
+            {filteredItems.length === 0 && (
               <div className="empty">
                 <div className="msg">알림이 없습니다</div>
               </div>
             )}
-            {displayed.map(n => (
+            {filteredItems.map(n => (
               <div
                 key={n.id}
                 onClick={() => markRead(n.id)}
@@ -162,7 +199,14 @@ export function NotificationList({ initialItems }: NotificationListProps = {}) {
                   )}
                 </div>
                 {n.target_type === 'schedule' && (
-                  <button className="btn btn-link btn-sm" style={{ flexShrink: 0 }}>
+                  <button
+                    className="btn btn-link btn-sm"
+                    style={{ flexShrink: 0 }}
+                    onClick={e => {
+                      e.stopPropagation()
+                      router.push(`?detail=${n.target_id}`)
+                    }}
+                  >
                     일정 보기 →
                   </button>
                 )}

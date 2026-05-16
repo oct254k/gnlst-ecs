@@ -1800,3 +1800,179 @@ category: 시나리오/QA
 | 공휴일·주말 일정 등록 차단 | 차단 없음 |
 | 역할 3종 이상 (`admin`/`user` 외 추가) | 2종만 |
 | `revoked` 대리 권한을 `active`로 직접 전환 | 신규 레코드 생성 |
+
+---
+
+## 14. 신규 구현 검증 (NEW)
+
+> 2026-05-16 전수조사 후 수정·구현된 기능 검증 시나리오
+
+### SC-NEW-AUTH-001: GET /api/auth/me — 프로필 조회
+
+| 기능 ID | AUTH-004 | 역할 | USER/ADMIN |
+
+**Steps**: exec1 세션으로 `GET /api/auth/me`
+
+**Result**: 200, `{ data: { id, name, email, employee_id, role, status, color } }`
+
+---
+
+### SC-NEW-AUTH-002: PATCH /api/auth/me — 현재 비밀번호 틀림 → 400
+
+| 기능 ID | AUTH-004 | 역할 | USER/ADMIN |
+
+**Steps**: `PATCH /api/auth/me` body `{ current_password: "wrong", new_password: "NewPass123!" }`
+
+**Result**: 400, `error.code = 'INVALID_PASSWORD'`
+
+---
+
+### SC-NEW-AUTH-003: 로그인 오류 HTTP 상태 코드 검증
+
+| 기능 ID | AUTH-002 | 역할 | 미인증 |
+
+**Steps**: `POST /api/auth/login` body `{ mode: "email", identifier: "admin@test.com", password: "wrongpassword" }`
+
+**Result**: 401 (기존 400 → 수정 후 401)
+
+---
+
+### SC-NEW-HOL-001: POST /api/holidays — 임시 공휴일 등록
+
+| 기능 ID | HOL-002 | 역할 | ADMIN |
+
+**Steps**: admin 세션으로 `POST /api/holidays` body `{ holiday_date: "2026-06-01", name: "테스트 공휴일", type: "temporary" }`
+
+**Result**: 201, `{ data: { id, holiday_date, name, type: "temporary" } }`
+
+---
+
+### SC-NEW-HOL-002: PATCH /api/holidays/:id — is_active 토글
+
+| 기능 ID | HOL-002 | 역할 | ADMIN |
+
+**Steps**: admin 세션으로 등록된 공휴일 ID로 `PATCH /api/holidays/:id` body `{ is_active: false }`
+
+**Result**: 200, `{ data: { is_active: false } }`
+
+---
+
+### SC-NEW-USR-001: PATCH /api/users/:id/role — 역할 변경
+
+| 기능 ID | PERM-001 | 역할 | ADMIN |
+
+**Steps**: admin 세션으로 exec1 ID로 `PATCH /api/users/:id/role` body `{ role: "admin" }` 후 원복
+
+**Result**: 200, 해당 유저 role 변경 확인
+
+---
+
+### SC-NEW-USR-002: PATCH /api/users/:id/status — 상태 변경
+
+| 기능 ID | PERM-001 | 역할 | ADMIN |
+
+**Steps**: admin 세션으로 exec1 ID로 `PATCH /api/users/:id/status` body `{ status: "inactive" }` 후 원복
+
+**Result**: 200, 해당 유저 status 변경 확인
+
+---
+
+### SC-NEW-USR-003: GET /api/users — last_login_at 포함 확인
+
+| 기능 ID | PERM-001 | 역할 | ADMIN |
+
+**Steps**: admin 세션으로 `GET /api/users`
+
+**Result**: 응답 items에 `last_login_at` 필드 존재
+
+---
+
+### SC-NEW-HOL-003: DELETE /api/holidays/:id — substitute 삭제 시도 → 403
+
+| 기능 ID | HOL-003 | 역할 | ADMIN |
+
+**Steps**: admin 세션으로 type='statutory' 또는 'substitute' 공휴일 ID로 `DELETE /api/holidays/:id`
+
+**Result**: 403 반환
+
+---
+
+### SC-NEW-CAL-001: GET /api/calendar/day/:date — 일별 일정+공휴일 조회
+
+| 기능 ID | CAL-007 | 역할 | USER/ADMIN |
+
+**Steps**: exec1 세션으로 `GET /api/calendar/day/2026-05-16`
+
+**Result**: 200, `{ data: { date, holiday, schedules: [...] } }` 구조
+
+---
+
+### SC-NEW-SCH-001: POST /api/schedules/:id/participants — 공통 일정 참가
+
+| 기능 ID | COM-002 | 역할 | USER |
+
+**Steps**: exec1 세션으로 공통 일정 ID로 `POST /api/schedules/:id/participants` body `{ user_id: exec1_id }`
+
+**Result**: 201 또는 200, 참가자 목록에 exec1 추가
+
+---
+
+### SC-NEW-SCH-002: DELETE /api/schedules/:id/participants/me — 참가 취소
+
+| 기능 ID | COM-002 | 역할 | USER |
+
+**Steps**: SC-NEW-SCH-001 이후 `DELETE /api/schedules/:id/participants/me`
+
+**Result**: 200 또는 204
+
+---
+
+### SC-NEW-SCH-003: DELETE 공통 일정 → notification_logs 생성
+
+| 기능 ID | COM-004 | 역할 | ADMIN |
+
+**Steps**: admin 세션으로 공통 일정 soft delete → notification_logs 확인
+
+**Result**: soft delete 성공, DB에 notification_logs 레코드 생성
+
+---
+
+### SC-NEW-CON-001: POST /api/contacts — 연락처 등록
+
+| 기능 ID | CON-001 | 역할 | ADMIN |
+
+**Steps**: admin 세션으로 `POST /api/contacts` body `{ name, status: "auto" }`
+
+**Result**: 201, data.status = "auto"
+
+---
+
+### SC-NEW-CON-002: DELETE /api/contacts/:id — 활성 멘션 있을 때 409
+
+| 기능 ID | CON-003 | 역할 | ADMIN |
+
+**Steps**: 활성 멘션이 있는 연락처 DELETE
+
+**Result**: 409, `error.code = 'HAS_ACTIVE_MENTIONS'`
+
+---
+
+### SC-NEW-COM-001: PATCH /api/companies/:id — 별칭 중복 → 409
+
+| 기능 ID | CON-005 | 역할 | ADMIN |
+
+**Steps**: admin 세션으로 이미 사용 중인 별칭으로 회사 PATCH
+
+**Result**: 409, `error.code = 'COMPANY_NAME_DUPLICATE'`
+
+---
+
+### SC-NEW-RAD-001: POST /api/radar/availability — 슬롯 조회
+
+| 기능 ID | RAD-003 | 역할 | USER/ADMIN |
+
+**Steps**: exec1 세션으로 `POST /api/radar/availability` body `{ owner_ids: [exec1_id], date_from: "2026-05-16", date_to: "2026-05-22", slot_minutes: 60 }`
+
+**Result**: 200, `{ data: { slots: [...] } }` — 각 slot에 date, start_time, status 존재
+
+---
