@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Icon } from '@/components/ui/icon'
 import { Badge } from '@/components/ui/badge'
 import { ExecSelector } from './exec-selector'
-import { AvailabilityGrid } from './availability-grid'
+import { AvailabilityList } from './availability-list'
+import type { SlotKey, SlotResult } from './availability-list'
 
 export interface RadarExec {
   id: string
@@ -14,64 +15,10 @@ export interface RadarExec {
   title: string
 }
 
-export type SlotKey = 'morning' | 'lunch' | 'afternoon' | 'evening'
-
-interface ApiSlot {
-  date: string
-  start_time: string
-  end_time: string
-  status: 'AVAILABLE' | 'PARTIAL' | 'UNAVAILABLE'
-  available_count: number
-  total_count: number
-  conflicted_users: { id: string; name: string }[]
-}
-
-function startTimeToSlotKey(startTime: string): SlotKey {
-  const hour = parseInt(startTime.slice(0, 2), 10)
-  if (hour < 12) return 'morning'
-  if (hour < 13) return 'lunch'
-  if (hour < 18) return 'afternoon'
-  return 'evening'
-}
-
-export interface GridSlot {
-  slot: SlotKey
-  available: number
-  total: number
-  conflicts: RadarExec[]
-}
-
-export interface GridRow {
-  date: string
-  weekend: boolean
-  slots: GridSlot[]
-}
-
-const SLOT_KEYS: SlotKey[] = ['morning', 'lunch', 'afternoon', 'evening']
-
-const SLOT_LABEL: Record<SlotKey, string> = {
-  morning: '오전',
-  lunch: '점심',
-  afternoon: '오후',
-  evening: '저녁',
-}
-
-const WEEKDAY_KO = ['일', '월', '화', '수', '목', '금', '토']
-
 function addDays(dateStr: string, n: number): string {
   const d = new Date(dateStr + 'T00:00:00')
   d.setDate(d.getDate() + n)
   return d.toISOString().slice(0, 10)
-}
-
-function daysBetween(start: string, end: string): string[] {
-  const days: string[] = []
-  let cur = start
-  while (cur <= end) {
-    days.push(cur)
-    cur = addDays(cur, 1)
-  }
-  return days
 }
 
 interface RadarViewProps {
@@ -87,76 +34,35 @@ export function RadarView({ execs, defaultStart, defaultEnd }: RadarViewProps) {
   const [selected, setSelected] = useState<Set<string>>(new Set(execs.map((e) => e.id)))
   const [start, setStart] = useState(defaultStart)
   const [end, setEnd] = useState(defaultEnd)
-  const [showGrid, setShowGrid] = useState(false)
-  const [apiSlots, setApiSlots] = useState<ApiSlot[]>([])
+  const [slots, setSlots] = useState<SlotResult[]>([])
+  const [showResult, setShowResult] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const dateRangeError: string | null = (() => {
     if (end < start) return '종료일이 시작일보다 앞섭니다'
-    const diffMs = new Date(end + 'T00:00').getTime() - new Date(start + 'T00:00').getTime()
-    const diffDays = diffMs / 86400000
+    const diffDays = (new Date(end + 'T00:00').getTime() - new Date(start + 'T00:00').getTime()) / 86400000
     if (diffDays > 30) return '최대 30일까지 조회 가능합니다'
     return null
   })()
 
   const canSearch = selected.size >= 1 && !dateRangeError
 
-  const execMap = useMemo(
-    () => new Map(execs.map((e) => [e.id, e])),
-    [execs]
-  )
-
-  const grid: GridRow[] | null = useMemo(() => {
-    if (!showGrid || selected.size < 1) return null
-    const days = daysBetween(start, end)
-    return days.map((date) => {
-      const dow = new Date(date + 'T00:00').getDay()
-      const isWeekend = dow === 0 || dow === 6
-      const slots: GridSlot[] = SLOT_KEYS.map((slotKey) => {
-        if (isWeekend) return { slot: slotKey, available: 0, total: selected.size, conflicts: [] }
-        const daySlots = apiSlots.filter(
-          (s) => s.date === date && startTimeToSlotKey(s.start_time) === slotKey
-        )
-        if (daySlots.length === 0) {
-          return { slot: slotKey, available: selected.size, total: selected.size, conflicts: [] }
-        }
-        const conflictedIds = new Set(daySlots.flatMap((s) => s.conflicted_users.map((u) => u.id)))
-        const conflicts = [...conflictedIds]
-          .filter((id) => selected.has(id))
-          .map((id) => execMap.get(id) ?? { id, name: '', color: '#64748B', title: '' })
-        const minAvailable = Math.min(...daySlots.map((s) => s.available_count))
-        return {
-          slot: slotKey,
-          available: minAvailable,
-          total: selected.size,
-          conflicts,
-        }
-      })
-      return { date, weekend: isWeekend, slots }
-    })
-  }, [showGrid, selected, start, end, apiSlots, execMap])
-
   async function handleSearch() {
     if (!canSearch) return
     setLoading(true)
-    setShowGrid(false)
+    setShowResult(false)
     setError(null)
     try {
       const res = await fetch('/api/radar/availability', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          owner_ids: [...selected],
-          date_from: start,
-          date_to: end,
-          slot_minutes: 60,
-        }),
+        body: JSON.stringify({ owner_ids: [...selected], date_from: start, date_to: end }),
       })
       const json = await res.json()
       if (res.ok && json.data?.slots) {
-        setApiSlots(json.data.slots)
-        setShowGrid(true)
+        setSlots(json.data.slots)
+        setShowResult(true)
       } else {
         setError('가용성 조회에 실패했습니다. 다시 시도해주세요.')
       }
@@ -171,7 +77,7 @@ export function RadarView({ execs, defaultStart, defaultEnd }: RadarViewProps) {
     const params = new URLSearchParams(searchParams.toString())
     params.set('modal', 'form')
     params.set('date', date)
-    params.set('time_slot', slot)
+    if (slot !== 'allday') params.set('time_slot', slot)
     params.set('participant_ids', [...selected].join(','))
     router.replace(`?${params.toString()}`)
   }
@@ -179,24 +85,27 @@ export function RadarView({ execs, defaultStart, defaultEnd }: RadarViewProps) {
   function handleQuickRange(i: number) {
     const today = new Date().toISOString().slice(0, 10)
     const dow = new Date(today + 'T00:00:00').getDay()
-    // 월요일 기준 이번 주 시작 (한국식)
     const diffToMonday = (dow + 6) % 7
     const thisMonday = addDays(today, -diffToMonday)
-    const thisSunday = addDays(thisMonday, 6)
     const nextMonday = addDays(thisMonday, 7)
-    const nextSunday = addDays(thisMonday, 13)
     const firstOfMonth = today.slice(0, 8) + '01'
     const lastOfMonth = (() => {
       const d = new Date(today + 'T00:00:00')
       d.setMonth(d.getMonth() + 1, 0)
       return d.toISOString().slice(0, 10)
     })()
-    if (i === 0) { setStart(today); setEnd(addDays(today, 7)) }
-    else if (i === 1) { setStart(thisMonday); setEnd(thisSunday) }
-    else if (i === 2) { setStart(nextMonday); setEnd(nextSunday) }
-    else { setStart(firstOfMonth); setEnd(lastOfMonth) }
-    setShowGrid(false)
-    setApiSlots([])
+
+    const ranges: [string, string][] = [
+      [today,       addDays(today, 7)],
+      [thisMonday,  addDays(thisMonday, 6)],
+      [nextMonday,  addDays(nextMonday, 6)],
+      [firstOfMonth, lastOfMonth],
+    ]
+    const [s, e] = ranges[i]
+    setStart(s)
+    setEnd(e)
+    setShowResult(false)
+    setSlots([])
     setError(null)
   }
 
@@ -205,7 +114,7 @@ export function RadarView({ execs, defaultStart, defaultEnd }: RadarViewProps) {
       <div className="page-hd">
         <div className="flex-col" style={{ minWidth: 0 }}>
           <h1 className="h1">모임 레이더</h1>
-          <div className="sub">참석자와 기간을 선택하면 가능한 시간대를 분석합니다</div>
+          <div className="sub">참석자와 기간을 선택하면 전원 가능한 시간을 찾아줍니다</div>
         </div>
       </div>
 
@@ -230,14 +139,14 @@ export function RadarView({ execs, defaultStart, defaultEnd }: RadarViewProps) {
                     type="date"
                     className="input"
                     value={start}
-                    onChange={(e) => { setStart(e.target.value); setShowGrid(false); setApiSlots([]) }}
+                    onChange={(e) => { setStart(e.target.value); setShowResult(false); setSlots([]) }}
                   />
                   <span style={{ alignSelf: 'center', color: 'var(--c-text-3)' }}>~</span>
                   <input
                     type="date"
                     className="input"
                     value={end}
-                    onChange={(e) => { setEnd(e.target.value); setShowGrid(false); setApiSlots([]) }}
+                    onChange={(e) => { setEnd(e.target.value); setShowResult(false); setSlots([]) }}
                   />
                 </div>
                 {dateRangeError && (
@@ -274,21 +183,18 @@ export function RadarView({ execs, defaultStart, defaultEnd }: RadarViewProps) {
               </div>
             </div>
 
-            {/* 우측: 격자 */}
+            {/* 우측: 결과 리스트 */}
             <div className="card" style={{ minHeight: 520 }}>
               <div className="card-hd">
                 <span className="card-hd-title">
-                  <Icon name="dashboard" size={14} /> 가용성 격자
+                  <Icon name="dashboard" size={14} /> 가능한 시간
                 </span>
-                <div className="radar-legend">
-                  <span><span className="legend-sw r-ok" /> 전원 가능</span>
-                  <span><span className="legend-sw r-mid" /> 일부 충돌</span>
-                  <span><span className="legend-sw r-bad" /> 전원 불가</span>
-                  <span><span className="legend-sw r-weekend" /> 주말</span>
-                </div>
+                {showResult && (
+                  <span className="muted text-sm">최대 30개</span>
+                )}
               </div>
 
-              {!grid && !error && (
+              {!showResult && !error && (
                 <div className="empty" style={{ padding: 80 }}>
                   <div className="emoji">🎯</div>
                   <div className="msg">
@@ -300,24 +206,14 @@ export function RadarView({ execs, defaultStart, defaultEnd }: RadarViewProps) {
               {error && (
                 <div className="empty" style={{ padding: 80 }}>
                   <div className="msg" style={{ color: 'var(--c-warn)', marginBottom: 12 }}>{error}</div>
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    onClick={handleSearch}
-                  >
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={handleSearch}>
                     다시 시도
                   </button>
                 </div>
               )}
 
-              {grid && (
-                <AvailabilityGrid
-                  grid={grid}
-                  slotKeys={SLOT_KEYS}
-                  slotLabel={SLOT_LABEL}
-                  weekdayKo={WEEKDAY_KO}
-                  onSlotClick={handleSlotClick}
-                />
+              {showResult && (
+                <AvailabilityList slots={slots} onSlotClick={handleSlotClick} />
               )}
             </div>
           </div>
