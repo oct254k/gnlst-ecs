@@ -1,0 +1,4 @@
+-- seed.sql
+-- 테스트 데이터는 scripts/setup-test-data.mjs 로 생성합니다.
+-- supabase db reset 후 node scripts/setup-test-data.mjs 실행.
+-- (auth.users는 Supabase Admin API를 통해서만 올바르게 생성됨)

@@ -1,0 +1,99 @@
+import { NextResponse } from 'next/server'
+import { createUserClient } from '@/app/_lib/supabase/server'
+
+// PATCH /api/companies/:id
+// 회사 수정 (admin only)
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const supabase = await createUserClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return NextResponse.json(
+      { data: null, error: { code: 'UNAUTHORIZED', message: '인증이 필요합니다' } },
+      { status: 401 }
+    )
+  }
+  if (user.user_metadata?.role !== 'admin') {
+    return NextResponse.json(
+      { data: null, error: { code: 'FORBIDDEN', message: '권한이 없습니다' } },
+      { status: 403 }
+    )
+  }
+
+  const { id } = await params
+  const body = await request.json() as {
+    name?: string
+    aliases?: string[]
+  }
+
+  const updatePayload: Record<string, unknown> = {}
+  if (body.name !== undefined) updatePayload.name = body.name
+  if (body.aliases !== undefined) updatePayload.aliases = body.aliases
+
+  const { data, error } = await supabase
+    .from('companies')
+    .update(updatePayload as never)
+    .eq('id', id)
+    .is('deleted_at', null)
+    .select('id, name, aliases, is_auto_registered')
+    .single()
+
+  if (error) {
+    return NextResponse.json(
+      { data: null, error: { code: 'NOT_FOUND', message: '회사를 찾을 수 없습니다' } },
+      { status: 404 }
+    )
+  }
+
+  return NextResponse.json({ data, error: null })
+}
+
+// DELETE /api/companies/:id
+// 회사 soft delete (admin only)
+// 연결된 contacts의 company_id는 NULL로 갱신 (DB trigger 또는 여기서 처리)
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const supabase = await createUserClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return NextResponse.json(
+      { data: null, error: { code: 'UNAUTHORIZED', message: '인증이 필요합니다' } },
+      { status: 401 }
+    )
+  }
+  if (user.user_metadata?.role !== 'admin') {
+    return NextResponse.json(
+      { data: null, error: { code: 'FORBIDDEN', message: '권한이 없습니다' } },
+      { status: 403 }
+    )
+  }
+
+  const { id } = await params
+  const now = new Date().toISOString()
+
+  // 연결된 contacts의 company_id를 NULL로 갱신 (ERD 명세: SET NULL)
+  await supabase
+    .from('contacts')
+    .update({ company_id: null } as never)
+    .eq('company_id', id)
+    .is('deleted_at', null)
+
+  const { error } = await supabase
+    .from('companies')
+    .update({ deleted_at: now, deleted_by: user.id } as never)
+    .eq('id', id)
+    .is('deleted_at', null)
+
+  if (error) {
+    return NextResponse.json(
+      { data: null, error: { code: 'NOT_FOUND', message: '회사를 찾을 수 없습니다' } },
+      { status: 404 }
+    )
+  }
+
+  return new NextResponse(null, { status: 204 })
+}
