@@ -1352,3 +1352,14 @@ a:hover { text-decoration: underline; }
   /* 슬롯 그리드 가로 스크롤 */
   .radar-wrap { overflow-x: auto; }
 }
+
+/* 스켈레톤 로딩 */
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.skeleton {
+  background: var(--c-border, #e5e7eb);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
