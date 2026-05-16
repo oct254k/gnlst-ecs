@@ -34,6 +34,13 @@ export async function POST(request: Request) {
     )
   }
 
+  if (!/^\d{6,10}$/.test(employee_id)) {
+    return NextResponse.json(
+      { data: null, error: { code: 'INVALID_EMPLOYEE_ID', message: '사번은 6~10자리 숫자여야 합니다' } },
+      { status: 400 }
+    )
+  }
+
   const adminClient = createServiceRoleClient()
 
   // Check duplicates

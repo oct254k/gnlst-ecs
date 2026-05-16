@@ -29,6 +29,10 @@ export function InviteUserModal({ onClose, onInvited }: InviteUserModalProps) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!canSubmit || submitting) return
+    if (!/^\d{6,10}$/.test(form.employee_id.trim())) {
+      setError('사번은 6~10자리 숫자여야 합니다')
+      return
+    }
     setSubmitting(true)
     setError(null)
     try {
@@ -114,6 +118,7 @@ export function InviteUserModal({ onClose, onInvited }: InviteUserModalProps) {
                 onChange={e => setForm(f => ({ ...f, employee_id: e.target.value }))}
                 required
               />
+              <div style={{ fontSize: 12, color: 'var(--c-text-3)', marginTop: 4 }}>6~10자리 숫자</div>
             </div>
 
             <div className="field mb-3">
