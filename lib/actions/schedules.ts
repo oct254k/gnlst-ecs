@@ -1,6 +1,6 @@
 'use server'
 
-import { createUserClient } from '@/app/_lib/supabase/server'
+import { createUserClient, createServiceRoleClient } from '@/app/_lib/supabase/server'
 import type { Tables, TablesInsert, TablesUpdate } from '@/app/_lib/supabase/types'
 import type { ScheduleFormInput } from '@/lib/types/schedule'
 
@@ -211,7 +211,8 @@ export async function deleteSchedule(id: string): Promise<ActionResult> {
     deleted_by: user.id,
   }
 
-  const { error } = await supabase
+  const srSupabase = createServiceRoleClient()
+  const { error } = await srSupabase
     .from('schedules')
     .update(updateData as never)
     .eq('id', id)
