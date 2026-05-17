@@ -98,6 +98,11 @@ export async function updateUserRole(
     return { success: false, error: error.message }
   }
 
+  // JWT user_metadata.role 동기화 (RLS는 JWT 기준이므로 즉시 반영 필요)
+  await adminClient.auth.admin.updateUserById(userId, {
+    user_metadata: { role },
+  })
+
   return { success: true }
 }
 

@@ -80,5 +80,12 @@ export async function PATCH(
     )
   }
 
+  // role이 바뀐 경우 JWT user_metadata도 동기화 (RLS는 JWT role 기준)
+  if (role) {
+    await adminClient.auth.admin.updateUserById(id, {
+      user_metadata: { role },
+    })
+  }
+
   return NextResponse.json({ data, error: null })
 }
