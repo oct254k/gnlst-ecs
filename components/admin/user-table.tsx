@@ -60,6 +60,16 @@ export function UserTable() {
     fetchUsers()
   }
 
+  const handleTypeChange = async (id: string, user_type: 'executive' | 'staff') => {
+    setActiveMenuId(null)
+    await fetch(`/api/users/${id}/role`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_type }),
+    })
+    fetchUsers()
+  }
+
   const handleStatusChange = async (id: string, status: 'active' | 'inactive') => {
     setActiveMenuId(null)
     await fetch(`/api/users/${id}/status`, {
@@ -75,7 +85,11 @@ export function UserTable() {
       u.name.includes(search) ||
       u.email.includes(search) ||
       u.employee_id.includes(search)
-    const matchRole = roleFilter === 'all' || u.role === roleFilter
+    const matchRole =
+      roleFilter === 'all' ||
+      (roleFilter === 'admin' && u.role === 'admin') ||
+      (roleFilter === 'executive' && u.role === 'user' && u.user_type === 'executive') ||
+      (roleFilter === 'staff' && u.role === 'user' && u.user_type === 'staff')
     const matchStatus = statusFilter === 'all' || u.status === statusFilter
     return matchSearch && matchRole && matchStatus
   })
@@ -128,7 +142,8 @@ export function UserTable() {
             onChange={e => setRoleFilter(e.target.value)}
           >
             <option value="all">전체 역할</option>
-            <option value="user">임원</option>
+            <option value="executive">임원</option>
+            <option value="staff">직원</option>
             <option value="admin">관리자</option>
           </select>
           <select
@@ -179,7 +194,9 @@ export function UserTable() {
                     <td>
                       {u.role === 'admin'
                         ? <Badge tone="accent">관리자</Badge>
-                        : <Badge tone="primary">임원</Badge>}
+                        : u.user_type === 'staff'
+                          ? <Badge tone="neutral">직원</Badge>
+                          : <Badge tone="primary">임원</Badge>}
                     </td>
                     <td>
                       <span
@@ -227,6 +244,15 @@ export function UserTable() {
                           >
                             {u.role === 'admin' ? '임원으로 변경' : '관리자로 변경'}
                           </button>
+                          {u.role === 'user' && (
+                            <button
+                              className="btn btn-tertiary"
+                              style={{ width: '100%', textAlign: 'left', borderRadius: 0, padding: '8px 14px' }}
+                              onClick={() => handleTypeChange(u.id, u.user_type === 'staff' ? 'executive' : 'staff')}
+                            >
+                              {u.user_type === 'staff' ? '임원으로 변경' : '직원으로 변경'}
+                            </button>
+                          )}
                           <button
                             className="btn btn-tertiary"
                             style={{ width: '100%', textAlign: 'left', borderRadius: 0, padding: '8px 14px' }}

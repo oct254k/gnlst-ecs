@@ -18,7 +18,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('users')
-    .select('id, name, email, employee_id, role, status, color, created_at')
+    .select('id, name, email, employee_id, role, user_type, status, color, created_at')
     .eq('id', user.id)
     .is('deleted_at', null)
     .single()

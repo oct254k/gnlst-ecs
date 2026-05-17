@@ -23,25 +23,48 @@ export async function PATCH(
 
   const { id } = await params
   const body = await request.json()
-  const { role } = body as { role: 'admin' | 'user' }
+  const { role, user_type } = body as { role?: 'admin' | 'user'; user_type?: 'executive' | 'staff' }
 
-  if (!role || !['admin', 'user'].includes(role)) {
+  if (!role && !user_type) {
+    return NextResponse.json(
+      { data: null, error: { code: 'INTERNAL_ERROR', message: '변경할 항목이 없습니다' } },
+      { status: 400 }
+    )
+  }
+  if (role && !['admin', 'user'].includes(role)) {
     return NextResponse.json(
       { data: null, error: { code: 'INTERNAL_ERROR', message: '유효하지 않은 역할입니다' } },
+      { status: 400 }
+    )
+  }
+  if (user_type && !['executive', 'staff'].includes(user_type)) {
+    return NextResponse.json(
+      { data: null, error: { code: 'INTERNAL_ERROR', message: '유효하지 않은 사용자 유형입니다' } },
       { status: 400 }
     )
   }
 
   const adminClient = createServiceRoleClient()
 
-  const updatePayload = { role } satisfies TablesUpdate<'users'>
+  const updatePayload: Record<string, unknown> = {}
+  if (role) {
+    updatePayload.role = role
+    updatePayload.user_type = role === 'admin' ? null : (user_type ?? 'executive')
+  } else if (user_type) {
+    updatePayload.user_type = user_type
+  }
 
-  const { data, error } = await adminClient
+  let query = adminClient
     .from('users')
     .update(updatePayload as never)
     .eq('id', id)
     .is('deleted_at', null)
-    .select('id, name, email, employee_id, role, status, color')
+
+  // user_type만 변경할 때는 role='user'인 사용자만 허용
+  if (!role && user_type) query = query.eq('role', 'user')
+
+  const { data, error } = await query
+    .select('id, name, email, employee_id, role, user_type, status, color')
     .single()
 
   if (error) {

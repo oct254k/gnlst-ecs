@@ -1,5 +1,7 @@
 export type UserRole = 'admin' | 'user'
 
+export type UserType = 'executive' | 'staff'
+
 export type UserStatus = 'pending' | 'active' | 'inactive' | 'locked'
 
 export interface UserProfile {
@@ -8,6 +10,7 @@ export interface UserProfile {
   email: string
   employee_id: string
   role: UserRole
+  user_type: UserType | null
   status: UserStatus
   color: string | null
   last_login_at: string | null
@@ -40,5 +43,6 @@ export interface InviteUserInput {
   email: string
   employee_id: string
   role: UserRole
+  user_type?: UserType | null
   color?: string | null
 }

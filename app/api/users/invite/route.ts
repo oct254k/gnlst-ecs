@@ -19,11 +19,12 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json()
-  const { name, email, employee_id, role, color } = body as {
+  const { name, email, employee_id, role, user_type, color } = body as {
     name: string
     email: string
     employee_id: string
     role: 'admin' | 'user'
+    user_type?: 'executive' | 'staff' | null
     color?: string | null
   }
 
@@ -87,6 +88,7 @@ export async function POST(request: Request) {
     employee_id,
     name,
     role,
+    user_type: role === 'user' ? (user_type ?? 'executive') : null,
     status: 'pending',
     color: color ?? null,
   } satisfies TablesInsert<'users'>

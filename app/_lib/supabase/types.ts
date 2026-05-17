@@ -7,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -609,6 +614,7 @@ export type Database = {
           role: string
           status: string
           updated_at: string
+          user_type: string | null
         }
         Insert: {
           color?: string | null
@@ -625,6 +631,7 @@ export type Database = {
           role?: string
           status?: string
           updated_at?: string
+          user_type?: string | null
         }
         Update: {
           color?: string | null
@@ -641,6 +648,7 @@ export type Database = {
           role?: string
           status?: string
           updated_at?: string
+          user_type?: string | null
         }
         Relationships: [
           {
@@ -658,19 +666,12 @@ export type Database = {
     }
     Functions: {
       fn_radar_availability: {
-        Args: {
-          p_date_from: string
-          p_date_to: string
-          p_owner_ids: string[]
-          p_slot_min?: number
-        }
+        Args: { p_date_from: string; p_date_to: string; p_owner_ids: string[] }
         Returns: {
-          available_count: number
-          conflicted_ids: string[]
           slot_date: string
           slot_end: string
+          slot_key: string
           slot_start: string
-          status: string
           total_count: number
         }[]
       }
@@ -813,4 +814,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

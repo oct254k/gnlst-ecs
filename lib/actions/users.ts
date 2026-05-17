@@ -8,6 +8,7 @@ export async function inviteUser(input: {
   email: string
   employee_id: string
   role: 'admin' | 'user'
+  user_type?: 'executive' | 'staff' | null
   color?: string | null
 }): Promise<{ success: boolean; error?: string }> {
   const supabase = await createUserClient()
@@ -55,6 +56,7 @@ export async function inviteUser(input: {
     employee_id: input.employee_id,
     name: input.name,
     role: input.role,
+    user_type: input.role === 'user' ? (input.user_type ?? 'executive') : null,
     status: 'pending',
     color: input.color ?? null,
   } satisfies TablesInsert<'users'>
@@ -81,12 +83,40 @@ export async function updateUserRole(
   }
 
   const adminClient = await createAdminClient()
-  const updatePayload = { role } satisfies TablesUpdate<'users'>
+  const updatePayload = {
+    role,
+    user_type: role === 'admin' ? null : 'executive',
+  } satisfies TablesUpdate<'users'>
 
   const { error } = await adminClient
     .from('users')
     .update(updatePayload as never)
     .eq('id', userId)
+    .is('deleted_at', null)
+
+  if (error) {
+    return { success: false, error: error.message }
+  }
+
+  return { success: true }
+}
+
+export async function updateUserType(
+  userId: string,
+  user_type: 'executive' | 'staff'
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createUserClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user || user.user_metadata?.role !== 'admin') {
+    return { success: false, error: '권한이 없습니다' }
+  }
+
+  const adminClient = await createAdminClient()
+  const { error } = await adminClient
+    .from('users')
+    .update({ user_type } as never)
+    .eq('id', userId)
+    .eq('role', 'user')
     .is('deleted_at', null)
 
   if (error) {

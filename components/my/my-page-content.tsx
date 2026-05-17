@@ -11,6 +11,7 @@ interface CurrentUser {
   email: string
   employee_id?: string
   role: string
+  user_type?: string | null
   color?: string | null
   created_at?: string
 }
@@ -143,7 +144,11 @@ export function MyPageContent() {
               </div>
               <div>
                 <div className="text-sm muted" style={{ marginBottom: 2 }}>역할</div>
-                <div className="fw-6">{currentUser?.role === 'admin' ? '관리자' : '일반 사용자'}</div>
+                <div className="fw-6">
+                  {currentUser?.role === 'admin'
+                    ? '관리자'
+                    : currentUser?.user_type === 'staff' ? '직원' : '임원'}
+                </div>
               </div>
               <div>
                 <div className="text-sm muted" style={{ marginBottom: 2 }}>가입일</div>

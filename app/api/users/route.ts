@@ -26,7 +26,7 @@ export async function GET(request: Request) {
 
   let query = supabase
     .from('users')
-    .select('id, name, email, employee_id, role, status, color, last_login_at', { count: 'exact' })
+    .select('id, name, email, employee_id, role, user_type, status, color, last_login_at', { count: 'exact' })
     .is('deleted_at', null)
 
   if (role) query = query.eq('role', role)

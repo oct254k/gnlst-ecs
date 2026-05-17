@@ -19,6 +19,7 @@ export function InviteUserModal({ onClose, onInvited }: InviteUserModalProps) {
     email: '',
     employee_id: '',
     role: 'user' as 'admin' | 'user',
+    user_type: 'executive' as 'executive' | 'staff',
     color: PRESET_COLORS[0],
   })
   const [submitting, setSubmitting] = useState(false)
@@ -44,6 +45,7 @@ export function InviteUserModal({ onClose, onInvited }: InviteUserModalProps) {
           email: form.email.trim(),
           employee_id: form.employee_id.trim(),
           role: form.role,
+          user_type: form.role === 'user' ? form.user_type : null,
           color: form.color,
         }),
       })
@@ -84,17 +86,30 @@ export function InviteUserModal({ onClose, onInvited }: InviteUserModalProps) {
                   required
                 />
               </div>
-              <div className="field" style={{ width: 120 }}>
+              <div className="field" style={{ width: 110 }}>
                 <label className="field-label">역할 *</label>
                 <select
                   className="select"
                   value={form.role}
                   onChange={e => setForm(f => ({ ...f, role: e.target.value as 'admin' | 'user' }))}
                 >
-                  <option value="user">임원</option>
+                  <option value="user">임원/직원</option>
                   <option value="admin">관리자</option>
                 </select>
               </div>
+              {form.role === 'user' && (
+                <div className="field" style={{ width: 90 }}>
+                  <label className="field-label">구분 *</label>
+                  <select
+                    className="select"
+                    value={form.user_type}
+                    onChange={e => setForm(f => ({ ...f, user_type: e.target.value as 'executive' | 'staff' }))}
+                  >
+                    <option value="executive">임원</option>
+                    <option value="staff">직원</option>
+                  </select>
+                </div>
+              )}
             </div>
 
             <div className="field mb-3">

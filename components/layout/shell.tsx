@@ -126,7 +126,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      <Sidebar isAdmin onCreateSchedule={handleCreateSchedule} />
+      <Sidebar isAdmin={currentUser?.role === 'admin'} onCreateSchedule={handleCreateSchedule} />
 
       <main className="app-main">
         <div className="main" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
