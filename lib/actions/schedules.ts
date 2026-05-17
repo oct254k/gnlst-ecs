@@ -206,8 +206,21 @@ export async function deleteSchedule(id: string): Promise<ActionResult> {
     return { success: false, error: '인증이 필요합니다.' }
   }
 
+  // 삭제 전 전체 데이터 조회 (audit before_data용)
+  const { data: beforeRaw, error: fetchError } = await supabase
+    .from('schedules')
+    .select('*')
+    .eq('id', id)
+    .is('deleted_at', null)
+    .single()
+
+  if (fetchError || !beforeRaw) {
+    return { success: false, error: '일정을 찾을 수 없습니다.' }
+  }
+
+  const deletedAt = new Date().toISOString()
   const updateData: ScheduleUpdate = {
-    deleted_at: new Date().toISOString(),
+    deleted_at: deletedAt,
     deleted_by: user.id,
   }
 
@@ -221,6 +234,25 @@ export async function deleteSchedule(id: string): Promise<ActionResult> {
   if (error) {
     return { success: false, error: error.message }
   }
+
+  // service role 호출 시 auth.uid() = NULL → 트리거가 감사 로그 스킵
+  // → 직접 insert
+  const { data: actorRow } = await srSupabase
+    .from('users')
+    .select('name')
+    .eq('id', user.id)
+    .single()
+
+  await srSupabase.from('audit_logs').insert({
+    target_type: 'schedule',
+    target_id: id,
+    action: 'deleted',
+    actor_id: user.id,
+    actor_name_snapshot: (actorRow as unknown as { name: string } | null)?.name ?? '',
+    before_data: beforeRaw,
+    after_data: { ...(beforeRaw as object), ...updateData },
+    changed_fields: ['deleted_at', 'deleted_by'],
+  } as never)
 
   return { success: true }
 }
