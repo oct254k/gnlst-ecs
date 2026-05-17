@@ -31,8 +31,12 @@ export default async function AuditLogPage() {
   const auditLogs: AuditLogItem[] = rows.map(row => {
     const afterData = row.after_data as Record<string, unknown> | null
     const beforeData = row.before_data as Record<string, unknown> | null
-    const targetTitle =
-      String(afterData?.title ?? afterData?.name ?? afterData?.proxy_user ?? row.target_id)
+    // 삭제 이력은 after_data에 title이 없을 수 있으므로 before_data도 참조
+    const targetTitle = String(
+      afterData?.title ?? beforeData?.title ??
+      afterData?.name ?? beforeData?.name ??
+      row.target_id
+    )
     return {
       id: row.id,
       action: row.action as AuditLogItem['action'],
