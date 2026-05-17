@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react'
 import { Icon } from '@/components/ui/icon'
 import { Badge } from '@/components/ui/badge'
+import { RelationshipPopover } from '@/components/contacts/relationship-popover'
 import { createBrowserClientInstance } from '@/app/_lib/supabase/client'
-import type { ScheduleWithParticipants, AuditLogEntry } from '@/lib/types'
+import type { ScheduleWithParticipants, AuditLogEntry, RelationshipHistory } from '@/lib/types'
 
 // MOCK_SCHEDULES 는 다른 파일의 import를 깨지 않기 위해 빈 배열로 유지
 export const MOCK_SCHEDULES: ScheduleWithParticipants[] = []
@@ -59,6 +60,38 @@ export function ScheduleDetailModal({
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [currentUserRole, setCurrentUserRole] = useState<'admin' | 'user'>('user')
   const [participantLoading, setParticipantLoading] = useState(false)
+
+  type MentionTarget = { id: string; name: string; type: 'contact' | 'company' }
+  const [popoverTarget, setPopoverTarget] = useState<MentionTarget | null>(null)
+  const [popoverRect, setPopoverRect] = useState<DOMRect | null>(null)
+  const [popoverHistory, setPopoverHistory] = useState<RelationshipHistory | null>(null)
+  const [popoverLoading, setPopoverLoading] = useState(false)
+  const [popoverError, setPopoverError] = useState<string | null>(null)
+
+  async function fetchMentionHistory(target: MentionTarget) {
+    setPopoverLoading(true)
+    setPopoverError(null)
+    try {
+      const res = await fetch(`/api/relationships?reference_type=${target.type}&reference_id=${target.id}`)
+      if (!res.ok) throw new Error()
+      const json = await res.json()
+      const h = json.data as RelationshipHistory | null
+      setPopoverHistory(h && h.total_count > 0 ? h : null)
+    } catch {
+      setPopoverError('이력을 불러오지 못했습니다')
+      setPopoverHistory(null)
+    } finally {
+      setPopoverLoading(false)
+    }
+  }
+
+  function handleMentionClick(target: MentionTarget, rect: DOMRect) {
+    setPopoverTarget(target)
+    setPopoverRect(rect)
+    setPopoverHistory(null)
+    setPopoverError(null)
+    fetchMentionHistory(target)
+  }
 
   useEffect(() => {
     const supabase = createBrowserClientInstance()
@@ -347,6 +380,33 @@ export function ScheduleDetailModal({
                 </>
               )}
 
+              {/* 관련 연락처 */}
+              {schedule.mentions && schedule.mentions.length > 0 && (
+                <>
+                  <hr className="divider" />
+                  <div className="field-label mb-2">관련 연락처</div>
+                  <div className="flex gap-1" style={{ flexWrap: 'wrap' }}>
+                    {schedule.mentions.map((m) => (
+                      <button
+                        key={m.reference_id}
+                        type="button"
+                        className="chip"
+                        style={{ cursor: 'pointer', fontWeight: 400 }}
+                        onClick={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect()
+                          handleMentionClick(
+                            { id: m.reference_id, name: m.display_name, type: m.reference_type },
+                            rect,
+                          )
+                        }}
+                      >
+                        @{m.display_name}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+
               {/* 공통: 참가하기 버튼 */}
               {isCommon && (
                 <>
@@ -442,6 +502,18 @@ export function ScheduleDetailModal({
           </button>
         </div>
       </div>
+
+      {popoverTarget && (
+        <RelationshipPopover
+          target={popoverTarget}
+          history={popoverHistory}
+          loading={popoverLoading}
+          error={popoverError}
+          anchorRect={popoverRect}
+          onRetry={() => fetchMentionHistory(popoverTarget)}
+          onClose={() => setPopoverTarget(null)}
+        />
+      )}
     </>
   )
 }

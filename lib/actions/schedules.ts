@@ -110,7 +110,7 @@ export async function createSchedule(
       schedule_id: scheduleRow.id,
       reference_type: m.reference_type,
       reference_id: m.reference_id,
-      raw_text: `@${m.reference_id}`,
+      raw_text: m.display_name ?? m.reference_id,
     }))
 
     const { error: mError } = await supabase

@@ -62,7 +62,7 @@ export interface ScheduleFormInput {
   on_behalf_of_id?: string | null
   notify_user_ids?: string[]
   participant_ids?: string[]
-  mentions?: Array<{ reference_type: 'contact' | 'company'; reference_id: string }>
+  mentions?: Array<{ reference_type: 'contact' | 'company'; reference_id: string; display_name?: string }>
 }
 
 export interface CalendarSchedule {

@@ -5,6 +5,7 @@ import { Avatar } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Icon } from '@/components/ui/icon'
 import { InviteUserModal } from './invite-user-modal'
+import { PRESET_COLORS } from '@/lib/utils/colors'
 import type { UserProfile } from '@/lib/types'
 
 function statusBadge(status: UserProfile['status']) {
@@ -24,6 +25,7 @@ export function UserTable() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [inviteOpen, setInviteOpen] = useState(false)
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null)
+  const [colorMenuId, setColorMenuId] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement | null>(null)
 
   const fetchUsers = useCallback(() => {
@@ -44,6 +46,7 @@ export function UserTable() {
     const handleClick = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setActiveMenuId(null)
+        setColorMenuId(null)
       }
     }
     document.addEventListener('click', handleClick)
@@ -76,6 +79,17 @@ export function UserTable() {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
+    })
+    fetchUsers()
+  }
+
+  const handleColorChange = async (id: string, color: string) => {
+    setActiveMenuId(null)
+    setColorMenuId(null)
+    await fetch(`/api/users/${id}/color`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ color }),
     })
     fetchUsers()
   }
@@ -216,7 +230,10 @@ export function UserTable() {
                         className="btn btn-tertiary btn-icon btn-sm"
                         onClick={e => {
                           e.stopPropagation()
-                          setActiveMenuId(prev => prev === u.id ? null : u.id)
+                          setActiveMenuId(prev => {
+                            if (prev !== u.id) setColorMenuId(null)
+                            return prev === u.id ? null : u.id
+                          })
                         }}
                       >
                         <Icon name="moreV" size={14} />
@@ -233,13 +250,12 @@ export function UserTable() {
                             border: '1px solid var(--c-border)',
                             borderRadius: 8,
                             boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-                            minWidth: 160,
-                            overflow: 'hidden',
+                            minWidth: 180,
                           }}
                         >
                           <button
                             className="btn btn-tertiary"
-                            style={{ width: '100%', textAlign: 'left', borderRadius: 0, padding: '8px 14px' }}
+                            style={{ width: '100%', textAlign: 'left', borderRadius: '8px 8px 0 0', padding: '8px 14px' }}
                             onClick={() => handleRoleChange(u.id, u.role === 'admin' ? 'user' : 'admin')}
                           >
                             {u.role === 'admin' ? '임원으로 변경' : '관리자로 변경'}
@@ -260,6 +276,73 @@ export function UserTable() {
                           >
                             {u.status === 'active' ? '비활성화' : '활성화'}
                           </button>
+                          <button
+                            className="btn btn-tertiary"
+                            style={{
+                              width: '100%',
+                              textAlign: 'left',
+                              borderRadius: colorMenuId === u.id ? 0 : '0 0 8px 8px',
+                              padding: '8px 14px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              borderTop: '1px solid var(--c-border)',
+                            }}
+                            onClick={e => {
+                              e.stopPropagation()
+                              setColorMenuId(prev => prev === u.id ? null : u.id)
+                            }}
+                          >
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{
+                                width: 12,
+                                height: 12,
+                                borderRadius: '50%',
+                                background: u.color ?? '#999',
+                                display: 'inline-block',
+                                flexShrink: 0,
+                              }} />
+                              색상 변경
+                            </span>
+                            <Icon name={colorMenuId === u.id ? 'chevU' : 'chevD'} size={12} />
+                          </button>
+                          {colorMenuId === u.id && (
+                            <div style={{
+                              padding: '10px 14px 12px',
+                              borderTop: '1px solid var(--c-border)',
+                              borderRadius: '0 0 8px 8px',
+                              background: 'var(--c-bg-2)',
+                            }}>
+                              <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(6, 1fr)',
+                                gap: 5,
+                              }}>
+                                {PRESET_COLORS.map(c => (
+                                  <button
+                                    key={c}
+                                    type="button"
+                                    onClick={() => handleColorChange(u.id, c)}
+                                    title={c}
+                                    style={{
+                                      width: 22,
+                                      height: 22,
+                                      borderRadius: '50%',
+                                      background: c,
+                                      border: u.color === c
+                                        ? '2px solid var(--c-text-1)'
+                                        : '2px solid transparent',
+                                      outline: u.color === c
+                                        ? '2px solid var(--c-bg-2)'
+                                        : 'none',
+                                      cursor: 'pointer',
+                                      padding: 0,
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </td>

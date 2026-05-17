@@ -69,7 +69,7 @@ export default async function CalendarPage({ searchParams }: PageProps) {
           .from('users')
           .select('id, name, color')
           .is('deleted_at', null)
-          .eq('role', 'user')
+          .neq('id', user.id)
           .eq('status', 'active'),
         supabase
           .from('schedules')

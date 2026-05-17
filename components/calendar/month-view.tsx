@@ -75,6 +75,7 @@ export function MonthView({ baseDate, today, schedules, holidays, onCellClick, o
                       key={s.id}
                       className={`cal-event${s.type === 'common' ? ' common' : ''}`}
                       style={{ borderLeftColor: color, color }}
+                      title={s.owner?.name ? `${s.owner.name} — ${s.title}` : s.title}
                       onClick={e => { e.stopPropagation(); onEventClick(s.id) }}
                     >
                       <span className="tnum">

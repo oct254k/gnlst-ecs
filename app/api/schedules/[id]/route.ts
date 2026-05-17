@@ -240,7 +240,7 @@ export async function PATCH(
     location?: string | null
     memo?: string | null
     participant_ids?: string[]
-    mentions?: Array<{ reference_type: string; reference_id: string }>
+    mentions?: Array<{ reference_type: string; reference_id: string; display_name?: string }>
   }
 
   try {
@@ -328,7 +328,7 @@ export async function PATCH(
             schedule_id: id,
             reference_type: m.reference_type,
             reference_id: m.reference_id,
-            raw_text: `@${m.reference_id}`,
+            raw_text: m.display_name ?? m.reference_id,
           })) as never
         )
     }

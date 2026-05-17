@@ -2,11 +2,7 @@
 
 import { useState } from 'react'
 import { Icon } from '@/components/ui/icon'
-
-const PRESET_COLORS = [
-  '#3B82F6', '#EF4444', '#10B981', '#F59E0B',
-  '#8B5CF6', '#EC4899', '#06B6D4', '#475569',
-]
+import { PRESET_COLORS } from '@/lib/utils/colors'
 
 interface InviteUserModalProps {
   onClose: () => void
@@ -138,20 +134,26 @@ export function InviteUserModal({ onClose, onInvited }: InviteUserModalProps) {
 
             <div className="field mb-3">
               <label className="field-label">색상</label>
-              <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(10, 1fr)',
+                gap: 6,
+              }}>
                 {PRESET_COLORS.map(c => (
                   <button
                     key={c}
                     type="button"
                     onClick={() => setForm(f => ({ ...f, color: c }))}
+                    title={c}
                     style={{
                       width: 28,
                       height: 28,
                       borderRadius: '50%',
                       background: c,
-                      border: form.color === c ? '3px solid var(--c-text-1)' : '2px solid transparent',
+                      border: form.color === c ? '2px solid var(--c-text-1)' : '2px solid transparent',
                       outline: form.color === c ? '2px solid var(--c-bg-1)' : 'none',
                       cursor: 'pointer',
+                      padding: 0,
                     }}
                     aria-label={c}
                   />

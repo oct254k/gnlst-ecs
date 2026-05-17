@@ -4,9 +4,11 @@ import { useMemo, useRef, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Icon } from '@/components/ui/icon'
+import { RelationshipPopover } from '@/components/contacts/relationship-popover'
 import { createSchedule } from '@/lib/actions/schedules'
 import { createBrowserClientInstance } from '@/app/_lib/supabase/client'
 import type { MockSchedule, MockUser } from '@/app/(app)/list/page'
+import type { RelationshipHistory } from '@/lib/types'
 
 export type SortCol = 'schedule_date' | 'title' | 'owner'
 export type SortDir = 'asc' | 'desc'
@@ -61,6 +63,40 @@ export function ListTable({
     return map
   }, [users])
 
+  type MentionTarget = { id: string; name: string; type: 'contact' | 'company' }
+  const [popoverTarget, setPopoverTarget] = useState<MentionTarget | null>(null)
+  const [popoverRect, setPopoverRect] = useState<DOMRect | null>(null)
+  const [popoverHistory, setPopoverHistory] = useState<RelationshipHistory | null>(null)
+  const [popoverLoading, setPopoverLoading] = useState(false)
+  const [popoverError, setPopoverError] = useState<string | null>(null)
+
+  async function fetchMentionHistory(target: MentionTarget) {
+    setPopoverLoading(true)
+    setPopoverError(null)
+    try {
+      const res = await fetch(`/api/relationships?reference_type=${target.type}&reference_id=${target.id}`)
+      if (!res.ok) throw new Error()
+      const json = await res.json()
+      const h = json.data as RelationshipHistory | null
+      setPopoverHistory(h && h.total_count > 0 ? h : null)
+    } catch {
+      setPopoverError('이력을 불러오지 못했습니다')
+      setPopoverHistory(null)
+    } finally {
+      setPopoverLoading(false)
+    }
+  }
+
+  function handleMentionClick(e: React.MouseEvent, target: MentionTarget) {
+    e.stopPropagation()
+    const rect = e.currentTarget.getBoundingClientRect()
+    setPopoverTarget(target)
+    setPopoverRect(rect)
+    setPopoverHistory(null)
+    setPopoverError(null)
+    fetchMentionHistory(target)
+  }
+
   // 날짜별 그룹
   const grouped = useMemo(() => {
     const groups: Record<string, MockSchedule[]> = {}
@@ -79,6 +115,7 @@ export function ListTable({
   const activeUsers = users.filter((u) => u.role === 'user' && u.status === 'active')
 
   return (
+    <>
     <table className="tbl tbl-list">
       <thead>
         <tr>
@@ -169,13 +206,15 @@ export function ListTable({
                   >
                     <span className="muted-2 text-sm">{s.location ?? '—'}</span>
                     {s.mentions.slice(0, 2).map((m, i) => (
-                      <span
+                      <button
                         key={i}
+                        type="button"
                         className="badge badge-neutral"
-                        style={{ marginLeft: 4, fontSize: 11 }}
+                        style={{ marginLeft: 4, fontSize: 11, cursor: 'pointer' }}
+                        onClick={(e) => handleMentionClick(e, { id: m.id, name: m.name, type: m.type })}
                       >
                         @{m.name}
-                      </span>
+                      </button>
                     ))}
                   </div>
                 </td>
@@ -240,6 +279,18 @@ export function ListTable({
         )}
       </tbody>
     </table>
+    {popoverTarget && (
+      <RelationshipPopover
+        target={popoverTarget}
+        history={popoverHistory}
+        loading={popoverLoading}
+        error={popoverError}
+        anchorRect={popoverRect}
+        onRetry={() => fetchMentionHistory(popoverTarget)}
+        onClose={() => setPopoverTarget(null)}
+      />
+    )}
+    </>
   )
 }
 

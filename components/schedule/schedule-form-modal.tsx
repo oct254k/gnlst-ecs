@@ -227,6 +227,7 @@ export function ScheduleFormModal({
           mentions: mentions.map((m) => ({
             reference_type: m.reference_type,
             reference_id: m.reference_id,
+            display_name: m.display_name,
           })),
         }),
       })
@@ -255,6 +256,7 @@ export function ScheduleFormModal({
         mentions: mentions.map((m) => ({
           reference_type: m.reference_type,
           reference_id: m.reference_id,
+          display_name: m.display_name,
         })),
       })
       if (!result.success) {

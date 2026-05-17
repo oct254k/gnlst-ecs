@@ -208,7 +208,6 @@ a:hover { text-decoration: underline; }
   gap: var(--sp-3);
   padding: 0 var(--sp-5);
   width: var(--w-sidebar);
-  border-right: 1px solid var(--c-divider);
   flex-shrink: 0;
 }
 .app[data-sidebar="collapsed"] .hd-brand { width: var(--w-sidebar-collapsed); padding: 0; justify-content: center; }
