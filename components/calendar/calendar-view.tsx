@@ -51,23 +51,14 @@ export function CalendarView({
   )
 
   // localStorage에서 layerVis 복원 (hydration 안전)
+  // OFF 목록을 저장 → 목록에 없는 사용자는 기본 ON (신규 사용자도 자동 ON)
   useEffect(() => {
     try {
-      const stored = localStorage.getItem('cal-layer-vis')
+      const stored = localStorage.getItem('cal-layer-off')
       if (stored) {
-        // onIds: ON 상태였던 userId 배열. 저장 목록에 없으면 OFF.
-        // 새로 추가된 userId(저장 당시 존재하지 않던 임원)는 기본 ON으로 처리.
-        const onIds = new Set<string>(JSON.parse(stored) as string[])
-        const storedAny = onIds.size > 0
+        const offIds = new Set<string>(JSON.parse(stored) as string[])
         setLayerVis(
-          Object.fromEntries(
-            users.map(u => {
-              // 저장 당시 목록에 이 user가 있었는지 알 수 없으므로:
-              // 저장된 값이 1개 이상 있으면 포함 여부로 판단, 저장이 빈 배열이면 모두 OFF
-              const inStored = onIds.has(u.id)
-              return [u.id, storedAny ? inStored : false]
-            })
-          )
+          Object.fromEntries(users.map(u => [u.id, !offIds.has(u.id)]))
         )
       }
     } catch {
@@ -76,13 +67,13 @@ export function CalendarView({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // layerVis 변경 시 localStorage 저장 (ON인 userId 배열 저장)
+  // layerVis 변경 시 localStorage 저장 (OFF인 userId 배열 저장)
   useEffect(() => {
     try {
-      const onIds = Object.entries(layerVis)
-        .filter(([, v]) => v)
+      const offIds = Object.entries(layerVis)
+        .filter(([, v]) => !v)
         .map(([k]) => k)
-      localStorage.setItem('cal-layer-vis', JSON.stringify(onIds))
+      localStorage.setItem('cal-layer-off', JSON.stringify(offIds))
     } catch {
       // 무시
     }
