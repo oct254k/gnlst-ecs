@@ -27,6 +27,7 @@ const navItems: NavItem[] = [
   { id: 'ap',         path: '/admin/proxy',   icon: 'shield',    label: '대리권한 관리', adminOnly: true },
   { id: 'ah',         path: '/admin/holiday', icon: 'holiday',   label: '공휴일 관리', adminOnly: true },
   { id: 'an',         path: '/admin/notif',   icon: 'notif_log', label: '알림 발송 이력', adminOnly: true },
+  { id: 'aa',         path: '/admin/audit',   icon: 'audit',     label: '변경 이력',       adminOnly: true },
 ]
 
 interface SidebarProps {
@@ -42,7 +43,7 @@ export function Sidebar({ isAdmin = false, unreadCount = 0, onCreateSchedule }: 
   const scheduleItems = navItems.filter(i => ['dashboard', 'calendar', 'list'].includes(i.id))
   const colabItems = navItems.filter(i => ['radar', 'notif'].includes(i.id))
   const dataItems = navItems.filter(i => i.adminOnly && ['contacts'].includes(i.id))
-  const adminItems = navItems.filter(i => i.adminOnly && ['au', 'ap', 'ah', 'an'].includes(i.id))
+  const adminItems = navItems.filter(i => i.adminOnly && ['au', 'ap', 'ah', 'an', 'aa'].includes(i.id))
 
   const SbItem = ({ item }: { item: NavItem }) => {
     const isActive = pathname === item.path || pathname.startsWith(item.path + '/')
