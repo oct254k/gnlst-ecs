@@ -158,15 +158,25 @@ export function ContactsTable({ contacts: initialContacts, companies: initialCom
                 { value: 'companies', label: `회사 (${initialCompanies.length})` },
               ]}
             />
-            <div className="search-box" style={{ marginLeft: 'auto' }}>
-              <Icon name="search" size={14} />
+            <div className="input-with-icon" style={{ marginLeft: 'auto', width: 220 }}>
+              <span className="ico"><Icon name="search" size={14} /></span>
               <input
                 type="text"
-                className="input input-sm"
+                className={`input input-sm${search ? ' has-clear' : ''}`}
                 placeholder={tab === 'contacts' ? '이름·소속·직책 검색' : '회사명·별칭 검색'}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
+              {search && (
+                <button
+                  type="button"
+                  className="btn btn-tertiary btn-icon btn-sm btn-clear"
+                  onClick={() => setSearch('')}
+                  aria-label="검색 초기화"
+                >
+                  <Icon name="x" size={12} />
+                </button>
+              )}
             </div>
             {isAdmin && tab === 'contacts' && (
               <button

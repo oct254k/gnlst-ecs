@@ -413,6 +413,8 @@ a:hover { text-decoration: underline; }
 .input-with-icon { position: relative; }
 .input-with-icon .ico { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); color: var(--c-text-3); pointer-events: none; }
 .input-with-icon .input { padding-left: 28px; }
+.input-with-icon .input.has-clear { padding-right: 26px; }
+.input-with-icon .btn-clear { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); padding: 0; }
 
 .field { display: flex; flex-direction: column; gap: 4px; }
 .field-row { display: flex; gap: 8px; align-items: stretch; }

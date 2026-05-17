@@ -112,11 +112,21 @@ export function NotifLogTable() {
           <div className="input-with-icon" style={{ flex: 1 }}>
             <span className="ico"><Icon name="search" size={14} /></span>
             <input
-              className="input"
+              className={`input${search ? ' has-clear' : ''}`}
               placeholder="수신 이메일·이름 검색"
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
+            {search && (
+              <button
+                type="button"
+                className="btn btn-tertiary btn-icon btn-sm btn-clear"
+                onClick={() => setSearch('')}
+                aria-label="검색 초기화"
+              >
+                <Icon name="x" size={12} />
+              </button>
+            )}
           </div>
           <select
             className="select"

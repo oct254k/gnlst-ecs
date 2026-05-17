@@ -39,7 +39,7 @@ export function ListToolbar({
           <Icon name="search" size={14} />
         </span>
         <input
-          className="input"
+          className={`input${search ? ' has-clear' : ''}`}
           placeholder="제목·장소 검색"
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
@@ -47,8 +47,7 @@ export function ListToolbar({
         {search && (
           <button
             type="button"
-            className="btn btn-tertiary btn-icon btn-sm"
-            style={{ marginRight: 4 }}
+            className="btn btn-tertiary btn-icon btn-sm btn-clear"
             onClick={() => onSearchChange('')}
             aria-label="검색 초기화"
           >
