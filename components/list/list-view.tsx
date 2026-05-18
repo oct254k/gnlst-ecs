@@ -14,8 +14,9 @@ function getDefaultDateRange(): { start: string; end: string } {
   const today = new Date()
   const y = today.getFullYear()
   const m = today.getMonth()
+  const d = today.getDate()
   const pad = (n: number) => String(n).padStart(2, '0')
-  const start = `${y}-${pad(m + 1)}-01`
+  const start = `${y}-${pad(m + 1)}-${pad(d)}`
   // 이번 달 말일: 다음 달 1일에서 하루 빼기
   const lastDay = new Date(y, m + 1, 0).getDate()
   const end = `${y}-${pad(m + 1)}-${pad(lastDay)}`
