@@ -20,7 +20,7 @@ const navItems: NavItem[] = [
   // 협업
   { id: 'radar',      path: '/radar',         icon: 'radar',     label: '모임 레이더' },
   { id: 'notif',      path: '/notifications', icon: 'bell',      label: '알림' },
-  { id: 'aa',         path: '/admin/audit',   icon: 'audit',     label: '변경 이력' },
+  { id: 'aa',         path: '/history',       icon: 'audit',     label: '변경 이력' },
   // 데이터 (admin)
   { id: 'contacts',   path: '/contacts',      icon: 'contact',   label: '연락처·회사', adminOnly: true },
   // 관리자

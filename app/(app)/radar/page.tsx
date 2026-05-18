@@ -30,8 +30,8 @@ export default async function RadarPage() {
         .from('users')
         .select('id, name, color')
         .is('deleted_at', null)
-        .eq('role', 'user')
         .eq('status', 'active')
+        .ilike('email', '%@gnlst.com')
 
       const execRows = (rawExecs ?? []) as unknown as UserRow[]
       execs = execRows.map((u) => ({

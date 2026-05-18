@@ -70,7 +70,8 @@ export default async function CalendarPage({ searchParams }: PageProps) {
           .select('id, name, color')
           .is('deleted_at', null)
           .neq('id', user.id)
-          .eq('status', 'active'),
+          .eq('status', 'active')
+          .ilike('email', '%@gnlst.com'),
         supabase
           .from('schedules')
           .select('id, type, title, schedule_date, time_slot, start_time, end_time, owner_id')
