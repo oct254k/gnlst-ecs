@@ -21,8 +21,8 @@ const navItems: NavItem[] = [
   { id: 'radar',      path: '/radar',         icon: 'radar',     label: '모임 레이더' },
   { id: 'notif',      path: '/notifications', icon: 'bell',      label: '알림' },
   { id: 'aa',         path: '/history',       icon: 'audit',     label: '변경 이력' },
-  // 데이터 (admin)
-  { id: 'contacts',   path: '/contacts',      icon: 'contact',   label: '연락처·회사', adminOnly: true },
+  // 데이터
+  { id: 'contacts',   path: '/contacts',      icon: 'contact',   label: '연락처·회사' },
   // 관리자
   { id: 'au',         path: '/admin/users',   icon: 'users',     label: '사용자 관리', adminOnly: true },
   { id: 'ap',         path: '/admin/proxy',   icon: 'shield',    label: '대리권한 관리', adminOnly: true },
@@ -42,7 +42,7 @@ export function Sidebar({ isAdmin = false, unreadCount = 0, onCreateSchedule }: 
 
   const scheduleItems = navItems.filter(i => ['dashboard', 'calendar', 'list'].includes(i.id))
   const colabItems = navItems.filter(i => ['radar', 'notif', 'aa'].includes(i.id))
-  const dataItems = navItems.filter(i => i.adminOnly && ['contacts'].includes(i.id))
+  const dataItems = navItems.filter(i => ['contacts'].includes(i.id))
   const adminItems = navItems.filter(i => i.adminOnly && ['au', 'ap', 'ah', 'an'].includes(i.id))
 
   const SbItem = ({ item }: { item: NavItem }) => {
@@ -71,12 +71,10 @@ export function Sidebar({ isAdmin = false, unreadCount = 0, onCreateSchedule }: 
           <div className="sb-group-title">협업</div>
           {colabItems.map(i => <SbItem key={i.id} item={i} />)}
         </div>
-        {isAdmin && (
-          <div className="sb-group">
-            <div className="sb-group-title">데이터</div>
-            {dataItems.map(i => <SbItem key={i.id} item={i} />)}
-          </div>
-        )}
+        <div className="sb-group">
+          <div className="sb-group-title">데이터</div>
+          {dataItems.map(i => <SbItem key={i.id} item={i} />)}
+        </div>
         {isAdmin && (
           <div className="sb-group">
             <div className="sb-group-title">관리자</div>
