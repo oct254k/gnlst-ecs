@@ -299,7 +299,7 @@ export function ScheduleDetailModal({
                     </Badge>
                     {!schedule.is_all_day && schedule.start_time && (
                       <span className="tnum">
-                        {schedule.start_time} ~ {schedule.end_time}
+                        {schedule.start_time?.slice(0, 5)} ~ {schedule.end_time?.slice(0, 5)}
                       </span>
                     )}
                   </div>

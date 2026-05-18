@@ -118,7 +118,7 @@ export function DayView({ baseDate, today, schedules, holidays, onEventClick }: 
                     </span>
                   </div>
                   <div style={{ color: 'var(--c-text-3)', fontSize: 11, fontVariantNumeric: 'tabular-nums' }}>
-                    {s.start_time} ~ {s.end_time} · {s.owner ? s.owner.name : '공통'}
+                    {s.start_time?.slice(0, 5)} ~ {s.end_time?.slice(0, 5)} · {s.owner ? s.owner.name : '공통'}
                   </div>
                 </div>
               )

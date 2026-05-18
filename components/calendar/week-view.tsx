@@ -131,7 +131,7 @@ export function WeekView({ baseDate, today, schedules, holidays, onEventClick }:
                       style={{ top, height, background: color }}
                       onClick={() => onEventClick(s.id)}
                     >
-                      <div className="we-time tnum">{s.start_time}~{s.end_time}</div>
+                      <div className="we-time tnum">{s.start_time?.slice(0, 5)}~{s.end_time?.slice(0, 5)}</div>
                       <div className="we-title">{s.type === 'common' && '[공통] '}{s.title}</div>
                     </div>
                   )

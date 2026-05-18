@@ -149,7 +149,7 @@ export function DayDetailPanel({
                       onClick={() => onScheduleClick(s.id)}
                     >
                       <span className="tnum" style={{ fontSize: 11 }}>
-                        {s.start_time ?? '종일'}
+                        {s.start_time ? s.start_time.slice(0, 5) : '종일'}
                       </span>
                       <span
                         className="ellip"

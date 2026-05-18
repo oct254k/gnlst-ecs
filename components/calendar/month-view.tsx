@@ -79,7 +79,7 @@ export function MonthView({ baseDate, today, schedules, holidays, onCellClick, o
                       onClick={e => { e.stopPropagation(); onEventClick(s.id) }}
                     >
                       <span className="tnum">
-                        {s.start_time === null ? '종일' : s.start_time}
+                        {s.start_time === null ? '종일' : s.start_time.slice(0, 5)}
                       </span>
                       <span className="ellip" style={{ color: 'var(--c-text-1)' }}>
                         {s.type === 'common' && '[공통] '}{s.title}
