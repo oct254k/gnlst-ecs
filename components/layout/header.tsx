@@ -25,6 +25,7 @@ interface HeaderProps {
   userName?: string
   userColor?: string
   userRole?: 'admin' | 'user'
+  userType?: string
 }
 
 export function Header({
@@ -35,6 +36,7 @@ export function Header({
   userName = '관리자',
   userColor = '#475569',
   userRole = 'admin',
+  userType = 'exec',
 }: HeaderProps) {
   const pathname = usePathname()
   const router = useRouter()
@@ -97,7 +99,7 @@ export function Header({
           <div className="hd-user-info">
             <div className="hd-user-name">{userName}</div>
             <div className="hd-user-role">
-              {userRole === 'admin' ? '관리자' : '임원'}
+              {userRole === 'admin' ? '관리자' : userType === 'staff' ? '직원' : '임원'}
             </div>
           </div>
           <Icon name="chevD" size={12} stroke="var(--c-hd-text-soft)" />

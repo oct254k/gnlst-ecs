@@ -23,6 +23,7 @@ interface CurrentUser {
   name: string
   color: string
   role: UserRole
+  userType: string
 }
 
 const DEFAULT_SETTINGS: ThemeSettings = {
@@ -72,14 +73,16 @@ export function Shell({ children }: { children: React.ReactNode }) {
       if (user) {
         const { data } = await supabase
           .from('users')
-          .select('name, role, color')
+          .select('name, role, color, user_type')
           .eq('id', user.id)
           .single()
         if (data) {
+          const d = data as { name: string; role: string; color: string | null; user_type: string | null }
           setCurrentUser({
-            name: (data as { name: string; role: string; color: string | null }).name,
-            role: (data as { name: string; role: string; color: string | null }).role as UserRole,
-            color: (data as { name: string; role: string; color: string | null }).color ?? '#475569',
+            name: d.name,
+            role: d.role as UserRole,
+            color: d.color ?? '#475569',
+            userType: d.user_type ?? 'exec',
           })
         }
       }
@@ -120,6 +123,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           userName={currentUser?.name ?? '관리자'}
           userColor={currentUser?.color ?? '#475569'}
           userRole={currentUser?.role ?? 'admin'}
+          userType={currentUser?.userType ?? 'exec'}
         />
         <div style={{ position: 'absolute', top: 0, right: 0, height: '100%' }}>
           <NotificationPopover open={notifOpen} onClose={() => setNotifOpen(false)} />
