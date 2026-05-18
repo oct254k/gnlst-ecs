@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'GNLST 임원 일정관리 시스템',
+  title: 'GNLST 일정관리 시스템',
   description: '소수 임원의 일정 등록·공유·조율을 지원하는 비서 관리 시스템',
 }
 

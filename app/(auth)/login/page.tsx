@@ -69,7 +69,7 @@ function LoginForm() {
         <div style={{ fontSize: 28, fontWeight: 700, color: '#003876', letterSpacing: '-0.02em' }}>
           GNLST
         </div>
-        <div className="auth-title">임원 일정관리 시스템</div>
+        <div className="auth-title">일정관리 시스템</div>
         <div className="auth-sub">EXECUTIVE SCHEDULE MANAGEMENT</div>
       </div>
 

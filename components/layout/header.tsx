@@ -55,7 +55,7 @@ export function Header({
           <div className="hd-logo-wrap">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/gnlst-logo.png" alt="GNLST" className="hd-logo-img gnlst-logo-img" />
-            <span className="hd-logo-text">임원 일정관리</span>
+            <span className="hd-logo-text">일정관리</span>
           </div>
         </div>
       </div>

@@ -35,7 +35,7 @@ function InviteForm() {
       <div className="auth-card">
         <div className="auth-brand">
           <div style={{ fontSize: 28, fontWeight: 700, color: '#003876', letterSpacing: '-0.02em' }}>GNLST</div>
-          <div className="auth-title">임원 일정관리 시스템</div>
+          <div className="auth-title">일정관리 시스템</div>
         </div>
         <div style={{ textAlign: 'center', padding: '24px 0', color: '#dc2626', fontSize: 15 }}>
           초대 링크가 만료되었습니다.
@@ -55,7 +55,7 @@ function InviteForm() {
       <div className="auth-card">
         <div className="auth-brand">
           <div style={{ fontSize: 28, fontWeight: 700, color: '#003876', letterSpacing: '-0.02em' }}>GNLST</div>
-          <div className="auth-title">임원 일정관리 시스템</div>
+          <div className="auth-title">일정관리 시스템</div>
         </div>
         <div style={{ textAlign: 'center', padding: '24px 0', color: '#16a34a', fontSize: 15 }}>
           계정이 활성화되었습니다.
@@ -112,7 +112,7 @@ function InviteForm() {
     <div className="auth-card">
       <div className="auth-brand">
         <div style={{ fontSize: 28, fontWeight: 700, color: '#003876', letterSpacing: '-0.02em' }}>GNLST</div>
-        <div className="auth-title">임원 일정관리 시스템</div>
+        <div className="auth-title">일정관리 시스템</div>
         <div className="auth-sub">비밀번호 설정</div>
       </div>
 

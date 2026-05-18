@@ -110,7 +110,7 @@ function ResetPasswordContent() {
       <div className="auth-card">
         <div className="auth-brand">
           <div style={{ fontSize: 28, fontWeight: 700, color: '#003876', letterSpacing: '-0.02em' }}>GNLST</div>
-          <div className="auth-title">임원 일정관리 시스템</div>
+          <div className="auth-title">일정관리 시스템</div>
         </div>
         <div style={{ textAlign: 'center', padding: '24px 0' }}>
           <div style={{ fontSize: 15, color: '#111827', marginBottom: 8 }}>메일을 확인하세요.</div>
@@ -133,7 +133,7 @@ function ResetPasswordContent() {
       <div className="auth-card">
         <div className="auth-brand">
           <div style={{ fontSize: 28, fontWeight: 700, color: '#003876', letterSpacing: '-0.02em' }}>GNLST</div>
-          <div className="auth-title">임원 일정관리 시스템</div>
+          <div className="auth-title">일정관리 시스템</div>
           <div className="auth-sub">새 비밀번호 설정</div>
         </div>
 
@@ -195,7 +195,7 @@ function ResetPasswordContent() {
     <div className="auth-card">
       <div className="auth-brand">
         <div style={{ fontSize: 28, fontWeight: 700, color: '#003876', letterSpacing: '-0.02em' }}>GNLST</div>
-        <div className="auth-title">임원 일정관리 시스템</div>
+        <div className="auth-title">일정관리 시스템</div>
         <div className="auth-sub">비밀번호 찾기</div>
       </div>
 
