@@ -15,13 +15,6 @@ export async function PATCH(
       { status: 401 }
     )
   }
-  if (user.user_metadata?.role !== 'admin') {
-    return NextResponse.json(
-      { data: null, error: { code: 'FORBIDDEN', message: '권한이 없습니다' } },
-      { status: 403 }
-    )
-  }
-
   const { id } = await params
   const body = await request.json() as {
     name?: string
@@ -91,13 +84,6 @@ export async function DELETE(
       { status: 401 }
     )
   }
-  if (user.user_metadata?.role !== 'admin') {
-    return NextResponse.json(
-      { data: null, error: { code: 'FORBIDDEN', message: '권한이 없습니다' } },
-      { status: 403 }
-    )
-  }
-
   const { id } = await params
   const { searchParams } = new URL(request.url)
   const force = searchParams.get('force') === 'true'

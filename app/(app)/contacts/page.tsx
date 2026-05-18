@@ -90,7 +90,7 @@ export default async function ContactsPage() {
     <ContactsTable
       contacts={contacts}
       companies={companies}
-      isAdmin={isAdmin}
+      isAdmin={true}
     />
   )
 }
