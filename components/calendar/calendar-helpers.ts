@@ -3,10 +3,17 @@
 
 export function navigateDate(date: string, view: string, dir: number): string {
   const d = new Date(date + 'T00:00')
-  if (view === 'month') d.setMonth(d.getMonth() + dir)
+  if (view === 'month') {
+    // 말일 기준 이동 시 다음 달이 건너뛰어지지 않도록 일자를 해당 월 말일로 보정
+    const day = d.getDate()
+    d.setDate(1)
+    d.setMonth(d.getMonth() + dir)
+    const lastDate = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()
+    d.setDate(Math.min(day, lastDate))
+  }
   else if (view === 'week') d.setDate(d.getDate() + dir * 7)
   else d.setDate(d.getDate() + dir)
-  return d.toISOString().slice(0, 10)
+  return fmt(d.getFullYear(), d.getMonth() + 1, d.getDate())
 }
 
 export interface MonthCell {
@@ -18,8 +25,7 @@ export interface MonthCell {
 export function buildMonthCells(date: string): MonthCell[] {
   const [y, m] = date.split('-').map(Number)
   const first = new Date(y, m - 1, 1)
-  let firstDow = first.getDay() - 1
-  if (firstDow < 0) firstDow = 6 // 월=0..일=6
+  const firstDow = first.getDay() // 일=0..토=6
   const lastDate = new Date(y, m, 0).getDate()
   const cells: MonthCell[] = []
 
@@ -50,14 +56,12 @@ function fmt(y: number, m: number, d: number): string {
 
 export function buildWeekDays(date: string): string[] {
   const d = new Date(date + 'T00:00')
-  let dow = d.getDay() - 1
-  if (dow < 0) dow = 6
-  const monday = new Date(d)
-  monday.setDate(d.getDate() - dow)
+  const sunday = new Date(d)
+  sunday.setDate(d.getDate() - d.getDay())
   return Array.from({ length: 7 }, (_, i) => {
-    const x = new Date(monday)
-    x.setDate(monday.getDate() + i)
-    return x.toISOString().slice(0, 10)
+    const x = new Date(sunday)
+    x.setDate(sunday.getDate() + i)
+    return fmt(x.getFullYear(), x.getMonth() + 1, x.getDate())
   })
 }
 

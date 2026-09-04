@@ -9,18 +9,18 @@ const TODAY = new Date().toISOString().slice(0, 10)
 function getWeekRange(today: string): { start: string; end: string; label: string } {
   const d = new Date(today + 'T00:00')
   const day = d.getDay() // 0=Sun
-  const mon = new Date(d)
-  mon.setDate(d.getDate() - ((day + 6) % 7))
-  const sun = new Date(mon)
-  sun.setDate(mon.getDate() + 6)
+  const sun = new Date(d)
+  sun.setDate(d.getDate() - day)
+  const sat = new Date(sun)
+  sat.setDate(sun.getDate() + 6)
   const fmt = (x: Date) =>
     `${x.getFullYear()}.${String(x.getMonth() + 1).padStart(2, '0')}.${String(x.getDate()).padStart(2, '0')}`
   const toISO = (x: Date) =>
     `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`
   return {
-    start: toISO(mon),
-    end: toISO(sun),
-    label: `${fmt(mon)} ~ ${fmt(sun).slice(5)}`,
+    start: toISO(sun),
+    end: toISO(sat),
+    label: `${fmt(sun)} ~ ${fmt(sat).slice(5)}`,
   }
 }
 

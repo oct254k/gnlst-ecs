@@ -23,8 +23,8 @@ export function MonthView({ baseDate, today, schedules, holidays, onCellClick, o
   return (
     <div className="cal-month">
       <div className="cal-month-head">
-        {['월', '화', '수', '목', '금', '토', '일'].map((d, i) => (
-          <div key={d} className={`cal-dow ${i === 5 ? 'sat' : ''} ${i === 6 ? 'sun' : ''}`}>{d}</div>
+        {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
+          <div key={d} className={`cal-dow ${i === 6 ? 'sat' : ''} ${i === 0 ? 'sun' : ''}`}>{d}</div>
         ))}
       </div>
       <div className="cal-month-grid">

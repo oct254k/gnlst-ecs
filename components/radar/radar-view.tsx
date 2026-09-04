@@ -85,9 +85,8 @@ export function RadarView({ execs, defaultStart, defaultEnd }: RadarViewProps) {
   function handleQuickRange(i: number) {
     const today = new Date().toISOString().slice(0, 10)
     const dow = new Date(today + 'T00:00:00').getDay()
-    const diffToMonday = (dow + 6) % 7
-    const thisMonday = addDays(today, -diffToMonday)
-    const nextMonday = addDays(thisMonday, 7)
+    const thisSunday = addDays(today, -dow)
+    const nextSunday = addDays(thisSunday, 7)
     const firstOfMonth = today.slice(0, 8) + '01'
     const lastOfMonth = (() => {
       const d = new Date(today + 'T00:00:00')
@@ -97,8 +96,8 @@ export function RadarView({ execs, defaultStart, defaultEnd }: RadarViewProps) {
 
     const ranges: [string, string][] = [
       [today,       addDays(today, 7)],
-      [thisMonday,  addDays(thisMonday, 6)],
-      [nextMonday,  addDays(nextMonday, 6)],
+      [thisSunday,  addDays(thisSunday, 6)],
+      [nextSunday,  addDays(nextSunday, 6)],
       [firstOfMonth, lastOfMonth],
     ]
     const [s, e] = ranges[i]
